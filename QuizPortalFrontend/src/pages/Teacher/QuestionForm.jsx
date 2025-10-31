@@ -437,20 +437,7 @@ export default function QuestionForm() {
       errors.marks = 'Marks must be a number greater than 0'
     }
 
-    // ✅ NEW: Check if total marks exceed exam's total marks
-    if (exam && marksValue > 0) {
-      // Calculate total marks of other questions (excluding current one if editing)
-      const otherQuestionsTotalMarks = allQuestions
-        .filter(q => isEditMode ? parseInt(q.questionID) !== parseInt(questionId) : true)
-        .reduce((sum, q) => sum + (q.marks || 0), 0)
-
-      const newTotalMarks = otherQuestionsTotalMarks + marksValue
-
-      if (newTotalMarks > exam.totalMarks) {
-        const exceededBy = (newTotalMarks - exam.totalMarks).toFixed(2)
-        errors.marks = `Total marks (${newTotalMarks.toFixed(2)}) exceeds exam's total marks (${exam.totalMarks}). Reduce marks by at least ${exceededBy}.`
-      }
-    }
+    // Note: No validation for total marks limit since TotalMarks is now dynamically calculated from questions
 
     if (formData.questionType === 'MCQ') {
       // MCQ must have exactly 4 options

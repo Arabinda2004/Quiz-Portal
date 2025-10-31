@@ -38,10 +38,28 @@ namespace QuizPortalAPI.Models
         public bool HasNegativeMarking { get; set; } = false;
 
         [Required]
-        public decimal TotalMarks { get; set; } = 0;
+        [Range(0, 100)]
+        public decimal PassingPercentage { get; set; } = 40;
 
-        [Required]
-        public decimal PassingMarks { get; set; } = 0;
+        // Computed property: TotalMarks calculated from sum of all question marks
+        [NotMapped]
+        public decimal TotalMarks
+        {
+            get
+            {
+                return Questions?.Sum(q => q.Marks) ?? 0;
+            }
+        }
+
+        // Computed property: PassingMarks calculated from TotalMarks and PassingPercentage
+        [NotMapped]
+        public decimal PassingMarks
+        {
+            get
+            {
+                return (TotalMarks * PassingPercentage) / 100;
+            }
+        }
 
         [Required]
         [StringLength(50)]

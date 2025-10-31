@@ -18,9 +18,11 @@ namespace QuizPortalAPI.DTOs.Exam
 
         public DateTime ScheduleEnd { get; set; }
 
-        public decimal TotalMarks { get; set; }
+        public decimal PassingPercentage { get; set; }
 
-        public decimal PassingMarks { get; set; }
+        public decimal TotalMarks { get; set; }  // Computed from questions
+
+        public decimal PassingMarks { get; set; }  // Computed from TotalMarks * PassingPercentage
 
         public bool HasNegativeMarking { get; set; }
 

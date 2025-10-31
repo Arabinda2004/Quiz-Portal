@@ -25,13 +25,9 @@ namespace QuizPortalAPI.DTOs.Exam
         [Required(ErrorMessage = "Schedule end time is required")]
         public DateTime ScheduleEnd { get; set; }
 
-        [Required(ErrorMessage = "Total marks is required")]
-        [Range(0.01, 10000, ErrorMessage = "Total marks must be greater than 0")]
-        public decimal TotalMarks { get; set; }
-
-        [Required(ErrorMessage = "Passing marks is required")]
-        [Range(0, 10000, ErrorMessage = "Passing marks must be 0 or greater")]
-        public decimal PassingMarks { get; set; }
+        [Required(ErrorMessage = "Passing percentage is required")]
+        [Range(0, 100, ErrorMessage = "Passing percentage must be between 0 and 100")]
+        public decimal PassingPercentage { get; set; } = 40;
 
         public bool HasNegativeMarking { get; set; } = false;
 

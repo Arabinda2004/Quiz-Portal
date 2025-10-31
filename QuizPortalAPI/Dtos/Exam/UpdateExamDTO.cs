@@ -21,11 +21,8 @@ namespace QuizPortalAPI.DTOs.Exam
 
         public DateTime? ScheduleEnd { get; set; }
 
-        [Range(0.01, 10000, ErrorMessage = "Total marks must be greater than 0")]
-        public decimal? TotalMarks { get; set; }
-
-        [Range(0, 10000, ErrorMessage = "Passing marks must be 0 or greater")]
-        public decimal? PassingMarks { get; set; }
+        [Range(0, 100, ErrorMessage = "Passing percentage must be between 0 and 100")]
+        public decimal? PassingPercentage { get; set; }
 
         public bool? HasNegativeMarking { get; set; }
 

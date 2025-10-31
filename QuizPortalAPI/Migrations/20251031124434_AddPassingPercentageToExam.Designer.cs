@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using QuizPortalAPI.Data;
@@ -11,9 +12,11 @@ using QuizPortalAPI.Data;
 namespace QuizPortalAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251031124434_AddPassingPercentageToExam")]
+    partial class AddPassingPercentageToExam
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -109,6 +112,9 @@ namespace QuizPortalAPI.Migrations
                     b.Property<bool>("HasNegativeMarking")
                         .HasColumnType("boolean");
 
+                    b.Property<decimal>("PassingMarks")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal>("PassingPercentage")
                         .HasColumnType("numeric");
 
@@ -122,6 +128,9 @@ namespace QuizPortalAPI.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("TotalMarks")
+                        .HasColumnType("numeric");
 
                     b.HasKey("ExamID");
 

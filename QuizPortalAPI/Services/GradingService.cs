@@ -38,56 +38,60 @@ namespace QuizPortalAPI.Services
                 if (DateTime.UtcNow < exam.ScheduleEnd)
                     throw new InvalidOperationException($"Exam has not ended yet. Grading will be available after {exam.ScheduleEnd:yyyy-MM-dd HH:mm:ss} UTC");
 
-                // ✅ Get all student responses that don't have a grading record yet
-                var pendingResponses = await _context.StudentResponses
+                // ✅ Get all student responses (both graded and pending)
+                var allResponses = await _context.StudentResponses
                     .Include(sr => sr.Question)
                     .Include(sr => sr.Student)
-                    .Where(sr => sr.ExamID == examId &&
-                                 !_context.GradingRecords
-                                     .Any(gr => gr.ResponseID == sr.ResponseID && gr.Status == "Graded"))
+                    .Where(sr => sr.ExamID == examId)
                     .OrderByDescending(r => r.SubmittedAt)
                     .ToListAsync();
 
-                // ! Total student response count
-                // //  ✅ Get all responses for total count
-                // var allResponses = await _context.StudentResponses
-                //     .Where(sr => sr.ExamID == examId)
-                //     .ToListAsync();
+                // ✅ Get grading records to determine status
+                var gradingRecords = await _context.GradingRecords
+                    .Where(gr => allResponses.Select(sr => sr.ResponseID).Contains(gr.ResponseID) && gr.Status == "Graded")
+                    .ToDictionaryAsync(gr => gr.ResponseID, gr => gr);
 
-                var allResponses = await _context.StudentResponses
-                        .Where(sr => sr.ExamID == examId)
-                        .Select(sr => sr.StudentID)
-                        .Distinct()
-                        .ToListAsync();
+                // ✅ Filter for pending responses only
+                var pendingResponses = allResponses.Where(sr => !gradingRecords.ContainsKey(sr.ResponseID)).ToList();
 
                 var totalPending = pendingResponses.Count;
-                var paginatedResponses = pendingResponses
+                var paginatedResponses = allResponses
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToList();
+
+                var uniqueStudents = allResponses.Select(sr => sr.StudentID).Distinct().Count();
 
                 var result = new PendingResponsesDTO
                 {
                     ExamID = examId,
                     ExamName = exam.Title,
                     TotalPending = totalPending,
-                    TotalResponses = allResponses.Count,
+                    TotalResponses = uniqueStudents,
                     Page = page,
                     PageSize = pageSize,
-                    TotalPages = (int)Math.Ceiling((double)totalPending / pageSize),
-                    Responses = paginatedResponses.Select(sr => new PendingResponseItemDTO
+                    TotalPages = (int)Math.Ceiling((double)allResponses.Count / pageSize),
+                    Responses = paginatedResponses.Select(sr =>
                     {
-                        ResponseId = sr.ResponseID,
-                        QuestionId = sr.QuestionID,
-                        QuestionText = sr.Question?.QuestionText ?? "Unknown",
-                        StudentId = sr.StudentID,
-                        StudentName = sr.Student?.FullName ?? "Unknown",
-                        StudentEmail = sr.Student?.Email ?? "Unknown",
-                        StudentAnswer = sr.AnswerText,
-                        MaxMarks = sr.Question?.Marks ?? 0,
-                        SubmittedAt = sr.SubmittedAt,
-                        QuestionType = sr.Question?.QuestionType.ToString() ?? "Unknown",
-                        PendingQuestionsFromStudent = pendingResponses.Count(r => r.StudentID == sr.StudentID)
+                        var isGraded = gradingRecords.ContainsKey(sr.ResponseID);
+                        var marksObtained = isGraded ? gradingRecords[sr.ResponseID].MarksObtained : 0;
+                        
+                        return new PendingResponseItemDTO
+                        {
+                            ResponseId = sr.ResponseID,
+                            QuestionId = sr.QuestionID,
+                            QuestionText = sr.Question?.QuestionText ?? "Unknown",
+                            StudentId = sr.StudentID,
+                            StudentName = sr.Student?.FullName ?? "Unknown",
+                            StudentEmail = sr.Student?.Email ?? "Unknown",
+                            StudentAnswer = sr.AnswerText,
+                            MaxMarks = sr.Question?.Marks ?? 0,
+                            MarksObtained = marksObtained,
+                            IsGraded = isGraded,
+                            SubmittedAt = sr.SubmittedAt,
+                            QuestionType = sr.Question?.QuestionType.ToString() ?? "Unknown",
+                            PendingQuestionsFromStudent = pendingResponses.Count(r => r.StudentID == sr.StudentID)
+                        };
                     }).ToList()
                 };
 
@@ -381,6 +385,11 @@ namespace QuizPortalAPI.Services
                 if (DateTime.UtcNow < response.Exam!.ScheduleEnd)
                     throw new InvalidOperationException($"Exam has not ended yet. Grading will be available after {response.Exam.ScheduleEnd:yyyy-MM-dd HH:mm:ss} UTC");
 
+                // ✅ Check if exam is published - prevent grading after publication
+                var isPublished = await IsExamPublishedAsync(response.ExamID);
+                if (isPublished)
+                    throw new InvalidOperationException("Cannot update marks for a published exam. Please unpublish the exam first to make changes.");
+
                 // ✅ Validate marks against max marks
                 if (gradeDto.MarksObtained > response.Question?.Marks)
                     throw new ArgumentException($"Marks cannot exceed {response.Question?.Marks}");
@@ -396,6 +405,9 @@ namespace QuizPortalAPI.Services
 
                 // ✅ Update response with marks
                 response.MarksObtained = gradeDto.MarksObtained;
+                // IsCorrect indicates if the student got marks (any marks > 0 = partially/fully correct)
+                // A grade of 0 means incorrect answer. The response is still considered "graded"
+                // because a GradingRecord with Status="Graded" will be created
                 response.IsCorrect = gradeDto.MarksObtained > 0;
 
                 _context.StudentResponses.Update(response);
@@ -473,6 +485,11 @@ namespace QuizPortalAPI.Services
                 if (DateTime.UtcNow < exam.ScheduleEnd)
                     throw new InvalidOperationException($"Exam has not ended yet. Grading will be available after {exam.ScheduleEnd:yyyy-MM-dd HH:mm:ss} UTC");
 
+                // ✅ Check if exam is published - prevent batch grading after publication
+                var isPublished = await IsExamPublishedAsync(batchGradeDto.ExamID);
+                if (isPublished)
+                    throw new InvalidOperationException("Cannot grade responses for a published exam. Please unpublish the exam first to make changes.");
+
                 var question = await _context.Questions.FindAsync(batchGradeDto.QuestionID);
                 if (question == null || question.ExamID != batchGradeDto.ExamID)
                     throw new InvalidOperationException("Question not found in this exam");
@@ -504,6 +521,8 @@ namespace QuizPortalAPI.Services
 
                     // Update response
                     response.MarksObtained = gradeItem.MarksObtained;
+                    // IsCorrect indicates if the student got marks (any marks > 0 = partially/fully correct)
+                    // A grade of 0 means incorrect answer. The response is still "graded"
                     response.IsCorrect = gradeItem.MarksObtained > 0;
                     _context.StudentResponses.Update(response);
 
@@ -984,6 +1003,11 @@ namespace QuizPortalAPI.Services
                 if (DateTime.UtcNow < response.Exam!.ScheduleEnd)
                     throw new InvalidOperationException($"Exam has not ended yet. Grading will be available after {response.Exam.ScheduleEnd:yyyy-MM-dd HH:mm:ss} UTC");
 
+                // ✅ Check if exam is published - prevent regrading after publication
+                var isPublished = await IsExamPublishedAsync(response.ExamID);
+                if (isPublished)
+                    throw new InvalidOperationException("Cannot regrade a published exam. Please unpublish the exam first to make changes.");
+
                 // ✅ Get old grading record
                 var oldGrading = await _context.GradingRecords
                     .FirstOrDefaultAsync(gr => gr.ResponseID == responseId && gr.Status == "Graded");
@@ -1002,6 +1026,8 @@ namespace QuizPortalAPI.Services
 
                 // ✅ Update response with new marks
                 response.MarksObtained = regradingDto.NewMarksObtained;
+                // IsCorrect indicates if the student got marks (any marks > 0 = partially/fully correct)
+                // A grade of 0 means incorrect answer. The response is still "graded"
                 response.IsCorrect = regradingDto.NewMarksObtained > 0;
                 _context.StudentResponses.Update(response);
                 await _context.SaveChangesAsync();
@@ -1082,6 +1108,22 @@ namespace QuizPortalAPI.Services
                     _context.Results.Add(result);
                 }
 
+                // Get all student responses for this exam
+                var studentResponses = await _context.StudentResponses
+                    .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
+                    .Select(sr => sr.ResponseID)
+                    .ToListAsync();
+
+                // Check how many responses are graded
+                var gradedResponseIds = await _context.GradingRecords
+                    .Where(gr => studentResponses.Contains(gr.ResponseID) && gr.Status == "Graded")
+                    .Select(gr => gr.ResponseID)
+                    .Distinct()
+                    .ToListAsync();
+
+                // Check if all responses are graded
+                var allResponsesGraded = studentResponses.Count > 0 && studentResponses.Count == gradedResponseIds.Count;
+
                 // Calculate total marks
                 var totalMarks = await _context.StudentResponses
                     .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
@@ -1095,6 +1137,9 @@ namespace QuizPortalAPI.Services
                 result.TotalMarks = totalMarks;
                 result.Percentage = examTotalMarks > 0 ? (totalMarks / examTotalMarks) * 100 : 0;
                 result.UpdatedAt = DateTime.UtcNow;
+                
+                // Update status based on grading completion
+                result.Status = allResponsesGraded ? "Graded" : "Completed";
 
                 // Calculate rank
                 var rank = await _context.Results
@@ -1111,6 +1156,25 @@ namespace QuizPortalAPI.Services
             {
                 _logger.LogError($"Error recalculating student result: {ex.Message}");
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Helper method to check if exam is published
+        /// </summary>
+        private async Task<bool> IsExamPublishedAsync(int examId)
+        {
+            try
+            {
+                var publication = await _context.ExamPublications
+                    .FirstOrDefaultAsync(ep => ep.ExamID == examId && ep.Status == "Published");
+
+                return publication != null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error checking exam publication status: {ex.Message}");
+                throw;
             }
         }
     }

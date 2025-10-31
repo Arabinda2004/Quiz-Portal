@@ -17,10 +17,13 @@ import GradingHub from './pages/Teacher/GradingHub'
 import EnhancedGradingDashboard from './pages/Teacher/EnhancedGradingDashboard'
 import StudentGradingPortal from './pages/Teacher/StudentGradingPortal'
 import TeacherGradingDashboard from './pages/Teacher/TeacherGradingDashboard'
+import ResultPublishDashboard from './pages/Teacher/ResultPublishDashboard'
 
 // Student pages
 import StudentDashboard from './pages/Student/Dashboard'
 import ExamInterface from './pages/Student/ExamInterface'
+import MyResults from './pages/Student/MyResults'
+import ResultDetail from './pages/Student/ResultDetail'
 
 // Admin pages
 import AdminDashboard from './pages/Admin/Dashboard'
@@ -131,6 +134,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/teacher/exam/:examId/results"
+            element={
+              <ProtectedRoute requiredRole="Teacher">
+                <ResultPublishDashboard />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Student routes */}
           <Route
@@ -146,6 +157,22 @@ function App() {
             element={
               <ProtectedRoute requiredRole="Student">
                 <ExamInterface />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/results"
+            element={
+              <ProtectedRoute requiredRole="Student">
+                <MyResults />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/result/:examId"
+            element={
+              <ProtectedRoute requiredRole="Student">
+                <ResultDetail />
               </ProtectedRoute>
             }
           />

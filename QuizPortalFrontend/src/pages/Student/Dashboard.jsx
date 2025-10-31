@@ -121,6 +121,16 @@ export default function StudentDashboard() {
             <StatLabel>Completed Exams</StatLabel>
             <StatValue>{stats.completedExams}</StatValue>
           </StatCard>
+          <StatCard 
+            style={{ cursor: 'pointer' }}
+            onClick={() => navigate('/student/results')}
+          >
+            <StatLabel>View Results</StatLabel>
+            <StatValue style={{ fontSize: '1rem' }}>📊</StatValue>
+            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+              Click to view your published results
+            </p>
+          </StatCard>
         </Grid>
 
         <Card>

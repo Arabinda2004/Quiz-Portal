@@ -26,8 +26,10 @@ namespace QuizPortalAPI.DTOs.Exam
 
         public int? TotalQuestions { get; set; }  // Will be populated later when we add questions
 
-        public decimal TotalMarks { get; set; }
+        public decimal PassingPercentage { get; set; }
 
-        public decimal PassingMarks { get; set; }
+        public decimal TotalMarks { get; set; }  // Computed from questions
+
+        public decimal PassingMarks { get; set; }  // Computed from TotalMarks * PassingPercentage
     }
 }

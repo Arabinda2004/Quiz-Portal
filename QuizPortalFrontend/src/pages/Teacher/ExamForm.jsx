@@ -203,8 +203,7 @@ export default function ExamForm() {
     title: '',
     description: '',
     batchRemark: '',
-    totalMarks: 100,
-    passingMarks: 40,
+    passingPercentage: 40,
     scheduleStart: '',
     scheduleEnd: '',
     // accessCode: '',
@@ -238,8 +237,7 @@ export default function ExamForm() {
         title: exam.title || '',
         description: exam.description || '',
         batchRemark: exam.batchRemark || '',
-        totalMarks: exam.totalMarks || 100,
-        passingMarks: exam.passingMarks || 40,
+        passingPercentage: exam.passingPercentage || 40,
         scheduleStart: exam.scheduleStart ? formatDatetime(exam.scheduleStart) : '',
         scheduleEnd: exam.scheduleEnd ? formatDatetime(exam.scheduleEnd) : '',
         // accessCode: exam.accessCode || '',
@@ -271,21 +269,25 @@ export default function ExamForm() {
     }
 
     if (formData.scheduleStart && formData.scheduleEnd) {
-      if (new Date(formData.scheduleStart) >= new Date(formData.scheduleEnd)) {
+      const startDate = new Date(formData.scheduleStart)
+      const endDate = new Date(formData.scheduleEnd)
+      
+      if (startDate >= endDate) {
         errors.scheduleEnd = 'End date must be after start date'
+      }
+
+      // Validate duration doesn't exceed schedule window
+      if (formData.durationMinutes > 0) {
+        const scheduleWindowMinutes = (endDate - startDate) / (1000 * 60) // Convert milliseconds to minutes
+        if (formData.durationMinutes > scheduleWindowMinutes) {
+          errors.durationMinutes = `Duration (${formData.durationMinutes} min) cannot exceed time window between start and end (${Math.floor(scheduleWindowMinutes)} min)`
+        }
       }
     }
 
-    if (formData.totalMarks <= 0) {
-      errors.totalMarks = 'Total marks must be greater than 0'
-    }
-
-    const passingMarksNum = Number(formData.passingMarks);
-    const totalMarksNum = Number(formData.totalMarks);
-    if (passingMarksNum < 0 || passingMarksNum > totalMarksNum) {
-      // console.log(passingMarksNum)
-      // console.log(totalMarksNum)
-      errors.passingMarks = 'Passing marks must be between 0 and total marks'
+    const passingPercentage = Number(formData.passingPercentage);
+    if (passingPercentage < 0 || passingPercentage > 100) {
+      errors.passingPercentage = 'Passing percentage must be between 0 and 100'
     }
 
     if (formData.durationMinutes <= 0) {
@@ -454,38 +456,24 @@ export default function ExamForm() {
               <Helper>Optional: Add a remark to identify the batch or class for this exam</Helper>
             </FormGroup>
 
-            {/* Marks Configuration */}
-            <TwoColumnGrid>
-              <FormGroup>
-                <Label htmlFor="totalMarks">Total Marks *</Label>
-                <Input
-                  id="totalMarks"
-                  type="number"
-                  name="totalMarks"
-                  value={formData.totalMarks}
-                  onChange={handleInputChange}
-                  min="1"
-                />
-                {validationErrors.totalMarks && (
-                  <Helper style={{ color: '#ef4444' }}>{validationErrors.totalMarks}</Helper>
-                )}
-              </FormGroup>
-
-              <FormGroup>
-                <Label htmlFor="passingMarks">Passing Marks *</Label>
-                <Input
-                  id="passingMarks"
-                  type="number"
-                  name="passingMarks"
-                  value={formData.passingMarks}
-                  onChange={handleInputChange}
-                  min="0"
-                />
-                {validationErrors.passingMarks && (
-                  <Helper style={{ color: '#ef4444' }}>{validationErrors.passingMarks}</Helper>
-                )}
-              </FormGroup>
-            </TwoColumnGrid>
+            {/* Passing Percentage Configuration */}
+            <FormGroup>
+              <Label htmlFor="passingPercentage">Passing Percentage (%) *</Label>
+              <Input
+                id="passingPercentage"
+                type="number"
+                name="passingPercentage"
+                value={formData.passingPercentage}
+                onChange={handleInputChange}
+                min="0"
+                max="100"
+                step="0.01"
+              />
+              {validationErrors.passingPercentage && (
+                <Helper style={{ color: '#ef4444' }}>{validationErrors.passingPercentage}</Helper>
+              )}
+              <Helper>Set the minimum percentage students need to pass (0-100%). Total marks will be calculated from question marks.</Helper>
+            </FormGroup>
 
             {/* Schedule */}
             <TwoColumnGrid>

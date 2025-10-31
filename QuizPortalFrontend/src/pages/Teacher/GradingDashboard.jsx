@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { teacherService } from '../../services/api'
+import { teacherService, resultService } from '../../services/api'
 import styled from 'styled-components'
 
 const Container = styled.div`
@@ -283,6 +283,15 @@ const SuccessMessage = styled.div`
   margin-bottom: 1.5rem;
 `
 
+const WarningMessage = styled.div`
+  background-color: #fffbeb;
+  border-left: 4px solid #d97706;
+  color: #92400e;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+`
+
 const Badge = styled.span`
   display: inline-block;
   padding: 0.25rem 0.75rem;
@@ -493,10 +502,21 @@ export default function GradingDashboard() {
   const [selectedFilter, setSelectedFilter] = useState('')
   const [gradingData, setGradingData] = useState({})
   const [editingResponseId, setEditingResponseId] = useState(null)
+  const [isExamPublished, setIsExamPublished] = useState(false)
 
   useEffect(() => {
     loadPendingResponses()
+    loadPublicationStatus()
   }, [examId])
+
+  const loadPublicationStatus = async () => {
+    try {
+      const status = await resultService.getPublicationStatus(examId)
+      setIsExamPublished(status?.isPublished || false)
+    } catch (err) {
+      console.error('Failed to load publication status:', err)
+    }
+  }
 
   const loadPendingResponses = async () => {
     try {
@@ -617,10 +637,10 @@ export default function GradingDashboard() {
       }
       const student = studentMap.get(response.studentId)
       student.totalCount += 1
-      if (response.marksObtained === 0 || response.marksObtained === null) {
-        student.pendingCount += 1
-      } else {
+      if (response.isGraded === true) {
         student.gradedCount += 1
+      } else {
+        student.pendingCount += 1
       }
     })
     return Array.from(studentMap.values())
@@ -683,7 +703,12 @@ export default function GradingDashboard() {
         <PageTitle>Grade Responses</PageTitle>
 
         {error && <ErrorMessage>{error}</ErrorMessage>}
-        {success && <SuccessMessage>{success}</SuccessMessage>}
+        {error && <ErrorMessage>{error}</ErrorMessage>}
+        {isExamPublished && (
+          <WarningMessage>
+            ⚠️ This exam has been published. You cannot edit marks while the exam is published. Please unpublish the exam first to make changes.
+          </WarningMessage>
+        )}
 
         {responses.length === 0 ? (
           <Card>
@@ -826,14 +851,16 @@ export default function GradingDashboard() {
                             </ResponseItemAnswer>
                             <ResponseItemMarks>
                               <div>
-                                <ResponseStatus $status={response.marksObtained ? 'Graded' : 'Pending'}>
-                                  {response.marksObtained ? 'Graded' : 'Pending'}
+                                <ResponseStatus $status={response.isGraded ? 'Graded' : 'Pending'}>
+                                  {response.isGraded ? 'Graded' : 'Pending'}
                                 </ResponseStatus>
                               </div>
                               <PrimaryButton
                                 onClick={() => setEditingResponseId(response.responseId)}
+                                disabled={isExamPublished}
+                                title={isExamPublished ? 'Cannot edit marks - exam is published' : ''}
                               >
-                                {response.marksObtained ? 'Edit' : 'Grade'}
+                                {response.isGraded ? 'Edit' : 'Grade'}
                               </PrimaryButton>
                             </ResponseItemMarks>
                           </ResponseItemInPanel>
@@ -892,8 +919,10 @@ export default function GradingDashboard() {
                           <td>
                             <PrimaryButton
                               onClick={() => setEditingResponseId(response.responseId)}
+                              disabled={isExamPublished}
+                              title={isExamPublished ? 'Cannot edit marks - exam is published' : ''}
                             >
-                              {response.marksObtained ? 'Edit' : 'Grade'}
+                              {response.isGraded ? 'Edit' : 'Grade'}
                             </PrimaryButton>
                           </td>
                         </tr>

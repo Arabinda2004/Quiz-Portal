@@ -516,12 +516,16 @@ export default function ExamDetail() {
               </InfoValue>
             </InfoItem>
             <InfoItem>
+              <InfoLabel>Passing Percentage</InfoLabel>
+              <InfoValue>{exam.passingPercentage?.toFixed(2)}%</InfoValue>
+            </InfoItem>
+            <InfoItem>
               <InfoLabel>Total Marks</InfoLabel>
-              <InfoValue>{exam.totalMarks}</InfoValue>
+              <InfoValue>{exam.totalMarks || 0} (from questions)</InfoValue>
             </InfoItem>
             <InfoItem>
               <InfoLabel>Passing Marks</InfoLabel>
-              <InfoValue>{exam.passingMarks}</InfoValue>
+              <InfoValue>{exam.passingMarks?.toFixed(2) || 0}</InfoValue>
             </InfoItem>
             <InfoItem>
               <InfoLabel>Duration</InfoLabel>
@@ -548,6 +552,11 @@ export default function ExamDetail() {
                 Exam cannot be edited after it has started. Only upcoming exams can be modified.
               </div>
             )}
+            {examStatus === 'Ended' && (
+              <PrimaryButton onClick={() => navigate(`/teacher/exam/${examId}/results`)}>
+                📊 View & Publish Results
+              </PrimaryButton>
+            )}
             <SecondaryButton onClick={() => navigate('/teacher/dashboard')}>Back to Dashboard</SecondaryButton>
           </ActionButtons>
         </Header>
@@ -567,9 +576,14 @@ export default function ExamDetail() {
               Statistics
             </TabButton>
             {examStatus === 'Ended' && (
-              <TabButton $active={activeTab === 'grading'} onClick={() => setActiveTab('grading')}>
-                📝 Grade Responses
-              </TabButton>
+              <>
+                <TabButton $active={activeTab === 'grading'} onClick={() => setActiveTab('grading')}>
+                  📝 Grade Responses
+                </TabButton>
+                <TabButton $active={activeTab === 'results'} onClick={() => setActiveTab('results')}>
+                  📊 Results & Publishing
+                </TabButton>
+              </>
             )}
           </TabButtons>
 
@@ -826,6 +840,32 @@ export default function ExamDetail() {
                       style={{ width: '100%' }}
                     >
                       📋 Open Grading Dashboard
+                    </PrimaryButton>
+                  </div>
+                </div>
+              </Card>
+            </TabContent>
+          )}
+
+          {/* Results & Publishing Tab */}
+          {examStatus === 'Ended' && (
+            <TabContent $active={activeTab === 'results'}>
+              <Card>
+                <h3>Results & Publishing</h3>
+                <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+                  View student results, grading progress, and publish results so students can view their marks and feedback.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+                  <div style={{ padding: '1.5rem', border: '2px solid #3b82f6', borderRadius: '8px', backgroundColor: '#eff6ff' }}>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#1f2937' }}>📊 Manage Results</h4>
+                    <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: '0.5rem 0 1rem 0' }}>
+                      View detailed results, publishing status, and grading progress. Publish results to make them visible to students.
+                    </p>
+                    <PrimaryButton 
+                      onClick={() => navigate(`/teacher/exam/${examId}/results`)}
+                      style={{ width: '100%' }}
+                    >
+                      📈 Results Dashboard
                     </PrimaryButton>
                   </div>
                 </div>

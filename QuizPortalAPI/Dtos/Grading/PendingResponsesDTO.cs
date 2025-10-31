@@ -22,6 +22,8 @@ namespace QuizPortalAPI.DTOs.Grading
         public string StudentEmail { get; set; } = string.Empty;
         public string StudentAnswer { get; set; } = string.Empty;
         public decimal MaxMarks { get; set; }
+        public decimal MarksObtained { get; set; }
+        public bool IsGraded { get; set; }
         public DateTime SubmittedAt { get; set; }
         public string QuestionType { get; set; } = string.Empty;
         public int PendingQuestionsFromStudent { get; set; }

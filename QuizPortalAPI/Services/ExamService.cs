@@ -50,15 +50,15 @@ namespace QuizPortalAPI.Services
                 if (createExamDTO.DurationMinutes <= 0)
                     throw new InvalidOperationException("Duration must be greater than 0");
 
-                // ✅ Validate marks
-                if (createExamDTO.TotalMarks <= 0)
-                    throw new InvalidOperationException("Total marks must be greater than 0");
+                // ✅ Validate duration doesn't exceed schedule window
+                var scheduleWindowMinutes = (createExamDTO.ScheduleEnd - createExamDTO.ScheduleStart).TotalMinutes;
+                if (createExamDTO.DurationMinutes > scheduleWindowMinutes)
+                    throw new InvalidOperationException(
+                        $"Exam duration ({createExamDTO.DurationMinutes} minutes) cannot exceed the time window between start and end times ({scheduleWindowMinutes:F0} minutes)");
 
-                if (createExamDTO.PassingMarks < 0)
-                    throw new InvalidOperationException("Passing marks cannot be negative");
-
-                if (createExamDTO.PassingMarks > createExamDTO.TotalMarks)
-                    throw new InvalidOperationException("Passing marks cannot exceed total marks");
+                // ✅ Validate passing percentage
+                if (createExamDTO.PassingPercentage < 0 || createExamDTO.PassingPercentage > 100)
+                    throw new InvalidOperationException("Passing percentage must be between 0 and 100");
 
                 // ✅ Validate password strength
                 if (string.IsNullOrWhiteSpace(createExamDTO.AccessPassword) || createExamDTO.AccessPassword.Length < 6)
@@ -84,8 +84,7 @@ namespace QuizPortalAPI.Services
                     DurationMinutes = createExamDTO.DurationMinutes,
                     ScheduleStart = createExamDTO.ScheduleStart,
                     ScheduleEnd = createExamDTO.ScheduleEnd,
-                    TotalMarks = createExamDTO.TotalMarks,
-                    PassingMarks = createExamDTO.PassingMarks,
+                    PassingPercentage = createExamDTO.PassingPercentage,
                     HasNegativeMarking = createExamDTO.HasNegativeMarking,
                     AccessCode = accessCode,
                     AccessPassword = hashedPassword,
@@ -131,6 +130,7 @@ namespace QuizPortalAPI.Services
             {
                 var exam = await _context.Exams
                     .Include(e => e.CreatedByUser)
+                    .Include(e => e.Questions)  // Include questions for TotalMarks calculation
                     .FirstOrDefaultAsync(e => e.ExamID == examId);
 
                 if (exam == null)
@@ -263,23 +263,18 @@ namespace QuizPortalAPI.Services
                     throw new InvalidOperationException("Both schedule start and end times must be provided together");
                 }
 
-                if (updateExamDTO.TotalMarks.HasValue)
-                {
-                    if (updateExamDTO.TotalMarks <= 0)
-                        throw new InvalidOperationException("Total marks must be greater than 0");
-                    exam.TotalMarks = updateExamDTO.TotalMarks.Value;
-                }
+                // ✅ Validate duration doesn't exceed schedule window (after updates)
+                var scheduleWindowMinutes = (exam.ScheduleEnd - exam.ScheduleStart).TotalMinutes;
+                if (exam.DurationMinutes > scheduleWindowMinutes)
+                    throw new InvalidOperationException(
+                        $"Exam duration ({exam.DurationMinutes} minutes) cannot exceed the time window between start and end times ({scheduleWindowMinutes:F0} minutes)");
 
-                if (updateExamDTO.PassingMarks.HasValue)
+                if (updateExamDTO.PassingPercentage.HasValue)
                 {
-                    if (updateExamDTO.PassingMarks < 0)
-                        throw new InvalidOperationException("Passing marks cannot be negative");
-                    exam.PassingMarks = updateExamDTO.PassingMarks.Value;
+                    if (updateExamDTO.PassingPercentage < 0 || updateExamDTO.PassingPercentage > 100)
+                        throw new InvalidOperationException("Passing percentage must be between 0 and 100");
+                    exam.PassingPercentage = updateExamDTO.PassingPercentage.Value;
                 }
-
-                // ✅ Validate that passing marks doesn't exceed total marks
-                if (exam.PassingMarks > exam.TotalMarks)
-                    throw new InvalidOperationException("Passing marks cannot exceed total marks");
 
                 if (updateExamDTO.HasNegativeMarking.HasValue)
                     exam.HasNegativeMarking = updateExamDTO.HasNegativeMarking.Value;
@@ -385,6 +380,7 @@ namespace QuizPortalAPI.Services
                 // ✅ Find exam by access code
                 var exam = await _context.Exams
                     .Include(e => e.CreatedByUser)
+                    .Include(e => e.Questions)  // Include questions for TotalMarks calculation
                     .FirstOrDefaultAsync(e => e.AccessCode == accessCode);
 
                 if (exam == null)
@@ -422,6 +418,7 @@ namespace QuizPortalAPI.Services
                         DurationMinutes = exam.DurationMinutes,
                         ScheduleStart = exam.ScheduleStart,
                         ScheduleEnd = exam.ScheduleEnd,
+                        PassingPercentage = exam.PassingPercentage,
                         TotalMarks = exam.TotalMarks,
                         PassingMarks = exam.PassingMarks,
                         HasNegativeMarking = exam.HasNegativeMarking,
@@ -454,6 +451,7 @@ namespace QuizPortalAPI.Services
                     DurationMinutes = exam.DurationMinutes,
                     ScheduleStart = exam.ScheduleStart,
                     ScheduleEnd = exam.ScheduleEnd,
+                    PassingPercentage = exam.PassingPercentage,
                     TotalMarks = exam.TotalMarks,
                     PassingMarks = exam.PassingMarks,
                     HasNegativeMarking = exam.HasNegativeMarking,
@@ -539,8 +537,9 @@ namespace QuizPortalAPI.Services
                 DurationMinutes = exam.DurationMinutes,
                 ScheduleStart = exam.ScheduleStart,
                 ScheduleEnd = exam.ScheduleEnd,
-                TotalMarks = exam.TotalMarks,
-                PassingMarks = exam.PassingMarks,
+                PassingPercentage = exam.PassingPercentage,
+                TotalMarks = exam.TotalMarks,  // Computed property
+                PassingMarks = exam.PassingMarks,  // Computed property
                 HasNegativeMarking = exam.HasNegativeMarking,
                 AccessCode = exam.AccessCode,
                 CreatedAt = exam.CreatedAt,
@@ -637,8 +636,9 @@ namespace QuizPortalAPI.Services
                 CreatedAt = exam.CreatedAt,
                 IsActive = isActive,
                 Status = status,
-                TotalMarks = exam.TotalMarks,
-                PassingMarks = exam.PassingMarks,
+                PassingPercentage = exam.PassingPercentage,
+                TotalMarks = exam.TotalMarks,  // Computed property
+                PassingMarks = exam.PassingMarks,  // Computed property
                 TotalQuestions = exam.Questions?.Count ?? 0
             };
         }

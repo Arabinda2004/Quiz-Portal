@@ -1056,7 +1056,7 @@ namespace QuizPortalAPI.Services
                 if (exam.CreatedBy != teacherId)
                     throw new UnauthorizedAccessException("You can only view progress for your own exams");
 
-                var totalStudents = await _context.Results
+                var totalStudents = await _context.StudentResponses
                     .Where(r => r.ExamID == examId)
                     .CountAsync();
 

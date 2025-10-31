@@ -56,19 +56,7 @@ namespace QuizPortalAPI.Services
                 if (createQuestionDTO.NegativeMarks < 0)
                     throw new InvalidOperationException("Negative marks cannot be negative");
 
-                // ✅ NEW: Check if adding this question would exceed exam's total marks
-                var currentQuestionsTotalMarks = await _context.Questions
-                    .Where(q => q.ExamID == examId)
-                    .SumAsync(q => q.Marks);
-
-                var newTotalMarks = currentQuestionsTotalMarks + createQuestionDTO.Marks;
-                if (newTotalMarks > exam.TotalMarks)
-                {
-                    var exceededBy = newTotalMarks - exam.TotalMarks;
-                    throw new InvalidOperationException(
-                        $"Total marks of all questions ({newTotalMarks}) would exceed exam's total marks ({exam.TotalMarks}). " +
-                        $"This question's marks are {createQuestionDTO.Marks}. Please reduce the marks by at least {exceededBy}.");
-                }
+                // Note: No validation for total marks limit since TotalMarks is now dynamically calculated from questions
 
                 // ✅ Validate options for MCQ
                 if (createQuestionDTO.QuestionType == QuestionType.MCQ)
@@ -243,22 +231,7 @@ namespace QuizPortalAPI.Services
                     if (updateQuestionDTO.Marks <= 0)
                         throw new InvalidOperationException("Marks must be greater than 0");
                     
-                    // ✅ NEW: Check if new marks would exceed exam's total marks
-                    if (exam != null)
-                    {
-                        var otherQuestionsTotalMarks = await _context.Questions
-                            .Where(q => q.ExamID == exam.ExamID && q.QuestionID != questionId)
-                            .SumAsync(q => q.Marks);
-
-                        var newTotalMarks = otherQuestionsTotalMarks + updateQuestionDTO.Marks;
-                        if (newTotalMarks > exam.TotalMarks)
-                        {
-                            var exceededBy = newTotalMarks - exam.TotalMarks;
-                            throw new InvalidOperationException(
-                                $"Total marks of all questions ({newTotalMarks}) would exceed exam's total marks ({exam.TotalMarks}). " +
-                                $"Please reduce the marks by at least {exceededBy}.");
-                        }
-                    }
+                    // Note: No validation for total marks limit since TotalMarks is now dynamically calculated from questions
                     
                     question.Marks = updateQuestionDTO.Marks.Value;
                 }

@@ -457,4 +457,147 @@ export const adminService = {
   },
 }
 
+// Result Publishing APIs
+export const resultService = {
+  // Get publication status for an exam
+  getPublicationStatus: async (examId) => {
+    try {
+      const response = await api.get(`/results/exams/${examId}/publication-status`)
+      console.log("Publication Status Response:", response.data)
+      // Backend returns { success: true, data: { ... } }
+      return response.data.data || response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Get grading progress for an exam
+  getGradingProgress: async (examId) => {
+    try {
+      const response = await api.get(`/teacher/grading/exams/${examId}/pending`)
+      console.log("Grading Progress Response:", response.data)
+      // Backend returns { success: true, data: { ... } }
+      return response.data.data || response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Get all results for an exam
+  getExamResults: async (examId, page = 1, pageSize = 10) => {
+    try {
+      const response = await api.get(`/results/exams/${examId}/all-results`, {
+        params: { page, pageSize },
+      })
+      console.log("Exam result: ")
+      console.log(response.data)
+      console.log("All Results Response:", response.data)
+      return response.data.data || []
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Get result statistics for an exam
+  getResultStatistics: async (examId) => {
+    try {
+      const response = await api.get(`/results/exams/${examId}/statistics`)
+      console.log("Statistics Response:", response.data)
+      return response.data.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Get result summary for an exam
+  getResultSummary: async (examId) => {
+    try {
+      const response = await api.get(`/results/exams/${examId}/summary`)
+      console.log("Summary Response:", response.data)
+      return response.data.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Get pass/fail breakdown for an exam
+  getPassFailBreakdown: async (examId) => {
+    try {
+      const response = await api.get(`/results/exams/${examId}/pass-fail`)
+      console.log("Pass/Fail Response:", response.data)
+      return response.data.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Publish exam results
+  publishExam: async (examId, data) => {
+    try {
+      const response = await api.post(`/results/exams/${examId}/publish`, data)
+      console.log("Publish Response:", response.data)
+      return response.data.data || response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Unpublish exam results
+  unpublishExam: async (examId, reason) => {
+    try {
+      const response = await api.post(`/results/exams/${examId}/unpublish`, { reason })
+      console.log("Unpublish Response:", response.data)
+      return response.data.data || response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Get published results for logged-in student
+  getPublishedResults: async () => {
+    try {
+      const response = await api.get(`/results/published`)
+      console.log("Published Results Response:", response.data)
+      return response.data.data || []
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Get specific exam result for logged-in student
+  getMyExamResult: async (examId) => {
+    try {
+      const response = await api.get(`/results/exams/${examId}`)
+      console.log("My Exam Result Response:", response.data)
+      return response.data.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Get exam result details for logged-in student
+  getExamResultDetails: async (examId) => {
+    try {
+      const response = await api.get(`/results/exams/${examId}/details`)
+      console.log("Exam Result Details Response:", response.data)
+      return response.data.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Get all student results (for student dashboard)
+  getMyResults: async (page = 1, pageSize = 10) => {
+    try {
+      const response = await api.get(`/results/my-results`, {
+        params: { page, pageSize },
+      })
+      console.log("My Results Response:", response.data)
+      return response.data.data || []
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+}
+
 export default api

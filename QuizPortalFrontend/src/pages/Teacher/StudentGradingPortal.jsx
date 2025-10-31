@@ -685,7 +685,7 @@ export default function StudentGradingPortal() {
   const selectedStudent = students.find((s) => s.studentId === selectedStudentId)
   const totalResponses = responses ? responses.length : 0
   const gradedResponses = responses
-    ? responses.filter((r) => r.marksObtained !== null && r.marksObtained !== 0).length
+    ? responses.filter((r) => r.isGraded === true).length
     : 0
 
   return (
@@ -775,9 +775,9 @@ export default function StudentGradingPortal() {
                     ) : responses && responses.length > 0 ? (
                       responses.map((response, index) => {
                         const isEditing = editingResponseId === response.responseId
-                        const isGraded = response.marksObtained !== null && response.marksObtained !== 0
+                        const isGraded = response.isGraded === true
                         const gradeData = gradingData[response.responseId] || {
-                          marksObtained: response.marksObtained || '',
+                          marksObtained: response.marksObtained !== null ? response.marksObtained : '',
                           feedback: response.feedback || '',
                           comment: response.comment || '',
                           isPartialCredit: response.isPartialCredit || false,

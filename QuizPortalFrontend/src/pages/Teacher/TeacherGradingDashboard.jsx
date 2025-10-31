@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { teacherService } from '../../services/api'
+import { teacherService, resultService } from '../../services/api'
 import styled from 'styled-components'
 
 // ============================================================================
@@ -494,6 +494,16 @@ const SuccessMessage = styled.div`
   font-size: 0.95rem;
 `
 
+const WarningMessage = styled.div`
+  background-color: #fffbeb;
+  border-left: 4px solid #d97706;
+  color: #92400e;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+`
+
 const ModalButtonGroup = styled.div`
   display: flex;
   gap: 1rem;
@@ -559,11 +569,22 @@ export default function TeacherGradingDashboard() {
     marksObtained: '',
     feedback: '',
   })
+  const [isExamPublished, setIsExamPublished] = useState(false)
 
   // Load students on mount
   useEffect(() => {
     loadStudentsList()
+    loadPublicationStatus()
   }, [examId])
+
+  const loadPublicationStatus = async () => {
+    try {
+      const status = await resultService.getPublicationStatus(examId)
+      setIsExamPublished(status?.isPublished || false)
+    } catch (err) {
+      console.error('Failed to load publication status:', err)
+    }
+  }
 
   // Load student responses when selected student changes
   useEffect(() => {
@@ -759,6 +780,11 @@ export default function TeacherGradingDashboard() {
 
         {error && <ErrorMessage>{error}</ErrorMessage>}
         {success && <SuccessMessage>{success}</SuccessMessage>}
+        {isExamPublished && (
+          <WarningMessage>
+            ⚠️ This exam has been published. You cannot edit marks while the exam is published. Please unpublish the exam first to make changes.
+          </WarningMessage>
+        )}
 
         {students.length === 0 ? (
           <Card>
@@ -877,6 +903,8 @@ export default function TeacherGradingDashboard() {
                               </div>
                               <PrimaryButton
                                 onClick={() => handleOpenGradingModal(response.responseID)}
+                                disabled={isExamPublished}
+                                title={isExamPublished ? 'Cannot edit marks - exam is published' : ''}
                               >
                                 {response.marksObtained > 0 ? 'Edit' : 'Grade'}
                               </PrimaryButton>
