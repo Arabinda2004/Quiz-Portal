@@ -33,7 +33,7 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (!ModelState.IsValid)
+                if (!ModelState.IsValid) // keeps track of validation errors
                 {
                     _logger.LogWarning("Invalid registration request");
                     return BadRequest(ModelState);
@@ -207,7 +207,7 @@ namespace QuizPortalAPI.Controllers
                 HttpOnly = true,  // Not accessible via JavaScript
                 Secure = !HttpContext.Request.IsHttps ? false : true,  // HTTPS only in production
                 SameSite = SameSiteMode.Strict,  // CSRF protection
-                Expires = DateTimeOffset.UtcNow.AddMinutes(15)  // 15 minutes
+                Expires = DateTimeOffset.UtcNow.AddMinutes(60)  // 60 minutes
             };
 
             var refreshTokenCookieOptions = new CookieOptions

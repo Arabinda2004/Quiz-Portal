@@ -474,10 +474,58 @@ export const resultService = {
   // Get grading progress for an exam
   getGradingProgress: async (examId) => {
     try {
-      const response = await api.get(`/teacher/grading/exams/${examId}/pending`)
+      const response = await api.get(`/teacher/grading/exams/${examId}/pending`, {
+        params: { page: 1, pageSize: 10 }
+      })
       console.log("Grading Progress Response:", response.data)
-      // Backend returns { success: true, data: { ... } }
-      return response.data.data || response.data
+      
+      // Transform the response to match expected structure
+      const data = response.data.data
+      if (data) {
+        // Count unique students from responses
+        const uniqueStudents = new Set(data.responses?.map(r => r.studentId) || [])
+        const totalStudents = uniqueStudents.size
+        
+        // Count students who have all questions graded
+        const studentGradingStatus = {}
+        data.responses?.forEach(r => {
+          if (!studentGradingStatus[r.studentId]) {
+            studentGradingStatus[r.studentId] = {
+              pending: 0,
+              graded: 0
+            }
+          }
+          if (r.isGraded) {
+            studentGradingStatus[r.studentId].graded++
+          } else {
+            studentGradingStatus[r.studentId].pending++
+          }
+        })
+        
+        // Count students who have all questions graded (no pending questions)
+        const gradedStudents = Object.values(studentGradingStatus).filter(
+          status => status.pending === 0
+        ).length
+        
+        const pendingStudents = totalStudents - gradedStudents
+        const gradingProgress = totalStudents > 0 ? (gradedStudents / totalStudents) * 100 : 0
+        
+        return {
+          totalStudents,
+          gradedStudents,
+          pendingStudents,
+          gradingProgress: Math.round(gradingProgress * 100) / 100,
+          totalResponses: data.totalResponses,
+          totalPending: data.totalPending
+        }
+      }
+      
+      return {
+        totalStudents: 0,
+        gradedStudents: 0,
+        pendingStudents: 0,
+        gradingProgress: 0
+      }
     } catch (error) {
       throw error.response?.data || error.message
     }

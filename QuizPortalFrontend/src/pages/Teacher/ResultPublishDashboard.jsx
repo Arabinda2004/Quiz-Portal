@@ -378,7 +378,9 @@ export default function ResultPublishDashboard() {
       console.log("Exam Data:", examData)
       console.log("Results Data:", resultsData)
       console.log("Status Data:", statusData)
-      console.log("Progress Data:", progressData)
+      console.log("Progress Data (RAW):", progressData)
+      console.log("Progress Data Type:", typeof progressData)
+      console.log("Progress Data Keys:", progressData ? Object.keys(progressData) : 'null')
       console.log("Statistics Data:", statsData)
 
       // examData has .data property (from teacherService)
@@ -394,70 +396,31 @@ export default function ResultPublishDashboard() {
       // Store exam statistics
       if (statsData && statsData.data) {
         setExamStats(statsData.data)
-      }
-
-      // Calculate grading progress from results data (always calculate for consistency)
-      if (Array.isArray(resultsData)) {
-        if (resultsData.length > 0) {
-          const totalStudents = resultsData.length
-          const gradedStudents = resultsData.filter(r => r.status === 'Graded').length
-          const pendingStudents = totalStudents - gradedStudents
-          const gradingProgressPercentage = totalStudents > 0 ? (gradedStudents / totalStudents) * 100 : 0
-
-          console.log("Grading Progress Calculation:", {
-            totalStudents,
-            gradedStudents,
-            pendingStudents,
-            gradingProgressPercentage
-          })
-
-          setGradingProgress({
-            totalStudents,
-            gradedStudents,
-            pendingStudents,
-            gradingProgress: gradingProgressPercentage
-          })
-        } else {
-          // No results yet - set to zero
-          setGradingProgress({
-            totalStudents: 0,
-            gradedStudents: 0,
-            pendingStudents: 0,
-            gradingProgress: 0
-          })
-        }
-      } else {
-        // Fallback to API data if resultsData is not an array
-        setGradingProgress(progressData || {
-          totalStudents: 0,
-          gradedStudents: 0,
-          pendingStudents: 0,
-          gradingProgress: 0
-        })
-      }
-
-      // Calculate statistics directly from results data for accuracy
-      if (Array.isArray(resultsData) && resultsData.length > 0 && examData.data) {
-        const totalMarks = resultsData.reduce((sum, r) => sum + (r.totalMarks || 0), 0)
-        const avgMarks = resultsData.length > 0 ? totalMarks / resultsData.length : 0
-        const passingMarks = examData.data.passingMarks || 0
-        const passedCount = resultsData.filter(
-          (r) => (r.totalMarks || 0) >= passingMarks
-        ).length
-
-        console.log("Statistics calculation from actual results:", { 
-          totalStudents: resultsData.length,
-          passingMarks,
+        
+        // Use exam statistics for result statistics (accurate data from teacher service)
+        const stats = statsData.data
+        
+        // Calculate pass/fail counts from PassPercentage provided by API
+        const studentsAttempted = stats.studentsAttempted || 0
+        const passPercentage = stats.passPercentage || 0
+        
+        // passedCount = (passPercentage / 100) * studentsAttempted
+        const passedCount = Math.round((passPercentage / 100) * studentsAttempted)
+        const failedCount = studentsAttempted - passedCount
+        
+        console.log("Result statistics from exam statistics API:", {
+          totalStudents: studentsAttempted,
+          passPercentage: passPercentage,
           passedCount,
-          failedCount: resultsData.length - passedCount,
-          averageMarks: avgMarks.toFixed(2)
+          failedCount,
+          averageMarks: stats.averageScore?.toFixed(2) || '0.00'
         })
-
+        
         setResultStats({
-          totalStudents: resultsData.length,
+          totalStudents: studentsAttempted,
           passedCount,
-          failedCount: resultsData.length - passedCount,
-          averageMarks: avgMarks.toFixed(2),
+          failedCount,
+          averageMarks: stats.averageScore?.toFixed(2) || '0.00',
         })
       } else {
         setResultStats({
@@ -467,6 +430,15 @@ export default function ResultPublishDashboard() {
           averageMarks: '0.00',
         })
       }
+
+      // Use grading progress from API (progressData)
+      console.log("Grading Progress from API:", progressData)
+      setGradingProgress(progressData || {
+        totalStudents: 0,
+        gradedStudents: 0,
+        pendingStudents: 0,
+        gradingProgress: 0
+      })
     } catch (err) {
       console.error("Error loading data:", err)
       setError(err.message || 'Failed to load data')
@@ -576,7 +548,7 @@ export default function ResultPublishDashboard() {
             </StatItem>
             <StatItem>
               <StatLabel>Pending Responses</StatLabel>
-              <StatValue>{gradingProgress?.totalPending || 0}</StatValue>
+              <StatValue>{gradingProgress?.pendingStudents || 0}</StatValue>
             </StatItem>
             <ProgressBar>
               <ProgressFill percentage={gradingProgress?.gradingProgress || 0} />

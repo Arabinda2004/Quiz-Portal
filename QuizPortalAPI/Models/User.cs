@@ -28,7 +28,7 @@ namespace QuizPortalAPI.Models
         [Required]
         public UserRole Role { get; set; }
 
-     public bool IsDefaultPassword { get; set; } = false;
+        public bool IsDefaultPassword { get; set; } = false;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }

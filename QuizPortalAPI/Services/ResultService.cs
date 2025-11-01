@@ -1056,8 +1056,11 @@ namespace QuizPortalAPI.Services
                 if (exam.CreatedBy != teacherId)
                     throw new UnauthorizedAccessException("You can only view progress for your own exams");
 
+                // Count unique students who have submitted responses
                 var totalStudents = await _context.StudentResponses
                     .Where(r => r.ExamID == examId)
+                    .Select(r => r.StudentID)
+                    .Distinct()
                     .CountAsync();
 
                 var gradedStudents = await _context.Results
@@ -1120,13 +1123,58 @@ namespace QuizPortalAPI.Services
                 if (passingPercentage < 0 || passingPercentage > 100)
                     throw new ArgumentException("Passing percentage must be between 0 and 100");
 
-                // ✅ Get all results for the exam
+                // ✅ Get all students who have submitted responses
+                var studentsWithResponses = await _context.StudentResponses
+                    .Where(sr => sr.ExamID == examId)
+                    .Select(sr => sr.StudentID)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (studentsWithResponses.Count == 0)
+                    throw new InvalidOperationException("No student responses found for this exam");
+
+                // ✅ Ensure Result records exist for all students who submitted responses
+                foreach (var studentId in studentsWithResponses)
+                {
+                    var existingResult = await _context.Results
+                        .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
+
+                    if (existingResult == null)
+                    {
+                        // Create a Result record if it doesn't exist
+                        var newResult = new Result
+                        {
+                            ExamID = examId,
+                            StudentID = studentId,
+                            Status = "Completed",
+                            TotalMarks = 0,
+                            Percentage = 0,
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        // Calculate marks from graded responses
+                        var studentMarks = await _context.StudentResponses
+                            .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
+                            .SumAsync(sr => sr.MarksObtained);
+
+                        var examTotalMarks = await _context.Questions
+                            .Where(q => q.ExamID == examId)
+                            .SumAsync(q => q.Marks);
+
+                        newResult.TotalMarks = studentMarks;
+                        newResult.Percentage = examTotalMarks > 0 ? (studentMarks / examTotalMarks) * 100 : 0;
+
+                        _context.Results.Add(newResult);
+                        _logger.LogInformation($"Created Result record for student {studentId} in exam {examId}");
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                // ✅ Get all results for the exam (now including newly created ones)
                 var results = await _context.Results
                     .Where(r => r.ExamID == examId)
                     .ToListAsync();
-
-                if (results.Count == 0)
-                    throw new InvalidOperationException("No student results found for this exam");
 
                 // ✅ Check if all responses are graded
                 var allGraded = await AreAllResponsesGradedAsync(examId);
@@ -1150,18 +1198,20 @@ namespace QuizPortalAPI.Services
                 }
 
                 // ✅ Get grading progress
-                var gradedStudents = results.Count(r => r.Status == "Graded");
                 var totalStudents = results.Count;
 
-                // ✅ Mark all results as published
+                // ✅ Mark all results as published and graded (since all responses are confirmed to be graded)
                 var publishedCount = 0;
                 foreach (var result in results)
                 {
+                    result.Status = "Graded"; // Mark as graded when publishing
                     result.IsPublished = true;
                     result.PublishedAt = DateTime.UtcNow;
                     _context.Results.Update(result);
                     publishedCount++;
                 }
+                
+                var gradedStudents = totalStudents; // All students are now graded
 
                 // ✅ Create or update ExamPublication record
                 if (existingPublication == null)

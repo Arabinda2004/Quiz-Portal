@@ -28,9 +28,9 @@ namespace QuizPortalAPI.Controllers
             return 0;
         }
 
-        //  SECURED: Admin only
+
         [HttpGet("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin")] 
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -58,7 +58,6 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        //  SECURED: Admin only, don't log email
         [HttpGet("by-email/{email}")]
         [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]

@@ -607,7 +607,8 @@ namespace QuizPortalAPI.Services
                     .ToListAsync();
 
                 var totalMarks = questions.Sum(q => q.Marks);
-                var passingMarks = (int)(totalMarks / 2); // Default: 50% of total marks
+                var passingPercentage = exam.PassingPercentage;
+                var passingMarks = (int)(totalMarks * passingPercentage / 100);
 
                 // ✅ Get all responses
                 var allResponses = await _context.StudentResponses

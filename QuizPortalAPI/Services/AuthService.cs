@@ -101,7 +101,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                // Check if email already exists
+                // Check if email already exists 
                 if (await _userService.UserExistsByEmailAsync(registerDTO.Email))
                 {
                     _logger.LogWarning($"Registration attempt with existing email: {registerDTO.Email}");
@@ -161,7 +161,7 @@ namespace QuizPortalAPI.Services
                     AccessToken = accessToken,
                     RefreshToken = refreshToken,
                     ExpiresAt = DateTime.UtcNow.AddMinutes(
-                        int.Parse(_configuration["JwtSettings:ExpirationMinutes"] ?? "15")),
+                        int.Parse(_configuration["JwtSettings:ExpirationMinutes"] ?? "60")),
                     User = userInfo
                 };
             }
@@ -337,7 +337,7 @@ namespace QuizPortalAPI.Services
                     ValidateAudience = true,
                     ValidAudience = _configuration["JwtSettings:Audience"],
                     ValidateLifetime = true,
-                    ClockSkew = TimeSpan.Zero
+                    ClockSkew = TimeSpan.Zero // Removes default 5-min grace period
                 }, out SecurityToken validatedToken);
 
                 return Task.FromResult(true);

@@ -24,7 +24,7 @@ namespace QuizPortalAPI.Services
             try
             {
                 var users = await _context.Users.ToListAsync();
-                return users.Select(MapToResponseDTO).ToList();
+                return users.Select(MapToResponseDTO).ToList(); // Select() is a LINQ projection method
             }
             catch (Exception ex)
             {
@@ -63,7 +63,6 @@ namespace QuizPortalAPI.Services
         }
 
 
-        // my change
         public async Task<UserResponseDTO> CreateUserAsync(AdminCreateUserDTO createUserDTO)
         {
             try
@@ -72,7 +71,7 @@ namespace QuizPortalAPI.Services
                 if (await UserExistsByEmailAsync(createUserDTO.Email))
                     throw new InvalidOperationException("Email already exists");
 
-                // Parse role
+                // Parse role // recheck needed
                 if (!Enum.TryParse<UserRole>(createUserDTO.Role, true, out var role))
                     throw new InvalidOperationException($"Invalid role: {createUserDTO.Role}");
 
@@ -166,7 +165,7 @@ namespace QuizPortalAPI.Services
                         throw new InvalidOperationException($"Invalid role: {updateUserDTO.Role}");
                     user.Role = role;
                 }
-                // my change 
+                
 
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();

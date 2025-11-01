@@ -407,20 +407,20 @@ export default function ResultPublishModal({ examId, examTitle, onClose, onPubli
             </WarningBox>
           )}
 
-          {/* Grading Progress Section */}
+          {/* Grading Progress Section (publish result)*/}
           <ProgressSection>
             <SectionTitle>Grading Progress</SectionTitle>
             <ProgressRow>
               <ProgressLabel>Total Students</ProgressLabel>
-              <ProgressValue>{gradingProgress?.totalResponses || 0}</ProgressValue>
+              <ProgressValue>{gradingProgress?.totalStudents || 0}</ProgressValue>
             </ProgressRow>
             <ProgressRow>
               <ProgressLabel>Graded Responses</ProgressLabel>
-              <ProgressValue>{gradingProgress?.totalResponses - gradingProgress?.totalPending || 0}</ProgressValue>
+              <ProgressValue>{gradingProgress?.gradedStudents || 0}</ProgressValue>
             </ProgressRow>
             <ProgressRow>
               <ProgressLabel>Pending Responses</ProgressLabel>
-              <ProgressValue>{gradingProgress?.totalPending || 0}</ProgressValue>
+              <ProgressValue>{gradingProgress?.pendingStudents || 0}</ProgressValue>
             </ProgressRow>
             <ProgressRow>
               <ProgressLabel>Progress</ProgressLabel>
