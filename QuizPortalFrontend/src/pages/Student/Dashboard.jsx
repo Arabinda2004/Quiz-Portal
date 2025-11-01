@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { authService, studentService } from '../../services/api'
+import { authService, studentService, resultService } from '../../services/api'
 import {
   DashboardContainer,
   NavBar,
@@ -35,12 +35,11 @@ export default function StudentDashboard() {
   const { user, logout } = useAuth()
   const [accessCode, setAccessCode] = useState('')
   const [accessPassword, setAccessPassword] = useState('')
-  const [exams, setExams] = useState([])
+  const [completedExams, setCompletedExams] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [stats, setStats] = useState({
-    totalExams: 0,
     completedExams: 0,
   })
 
@@ -48,12 +47,21 @@ export default function StudentDashboard() {
     loadDashboard()
   }, [])
 
-  const loadDashboard = () => {
-    // Initialize with empty data - students can access exams by code
-    setStats({
-      totalExams: 0,
-      completedExams: 0,
-    })
+  const loadDashboard = async () => {
+    try {
+      // Fetch all completed exams (including unpublished)
+      const results = await resultService.getMyCompletedExams(1, 100)
+      setCompletedExams(results)
+      console.log("Printing completed exams: ", results)
+      // Count only published exams for stats
+      const publishedCount = results.filter(r => r.status === 'Graded').length
+      setStats({
+        completedExams: publishedCount,
+      })
+    } catch (err) {
+      console.error('Failed to load dashboard:', err)
+      // Silent fail - student can still access exams
+    }
   }
 
   const handleAccessExam = async (e) => {
@@ -113,10 +121,6 @@ export default function StudentDashboard() {
         </WelcomeSection>
 
         <Grid>
-          <StatCard>
-            <StatLabel>Exams Available</StatLabel>
-            <StatValue>{stats.totalExams}</StatValue>
-          </StatCard>
           <StatCard>
             <StatLabel>Completed Exams</StatLabel>
             <StatValue>{stats.completedExams}</StatValue>
@@ -180,6 +184,103 @@ export default function StudentDashboard() {
             </p>
           </div>
         </Card>
+
+        {completedExams.filter(result => result.status === 'Graded').length > 0 && (
+          <Card>
+            <PageTitle style={{ marginTop: 0 }}>Completed Exams</PageTitle>
+            <Table>
+              <thead>
+                <tr>
+                  <th>Exam</th>
+                  <th>Date Submitted</th>
+                  <th>Score</th>
+                  <th>Percentage</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {completedExams
+                  .filter(result => result.status === 'Graded')
+                  .map((result) => (
+                    <tr key={result.resultID}>
+                      <td>
+                        <strong>{result.examName}</strong>
+                      </td>
+                      <td>
+                        {result.submittedAt 
+                          ? new Date(result.submittedAt).toLocaleDateString()
+                          : 'N/A'
+                        }
+                      </td>
+                      <td>
+                        {result.totalMarks?.toFixed(2) || '0'} / {result.examTotalMarks || '0'}
+                      </td>
+                      <td>
+                        <span style={{ 
+                          color: result.percentage >= result.passingPercentage ? '#10b981' : '#ef4444',
+                          fontWeight: 'bold'
+                        }}>
+                          {result.percentage?.toFixed(2) || '0'}%
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ 
+                          padding: '4px 12px',
+                          borderRadius: '12px',
+                          fontSize: '0.875rem',
+                          fontWeight: '500',
+                          backgroundColor: result.percentage >= result.passingPercentage ? '#d1fae5' : '#fee2e2',
+                          color: result.percentage >= result.passingPercentage ? '#065f46' : '#991b1b'
+                        }}>
+                          {result.percentage >= result.passingPercentage ? 'Passed' : 'Failed'}
+                        </span>
+                      </td>
+                      <td>
+                        <ActionButton onClick={() => navigate(`/student/results/${result.examID}`)}>
+                          View Details
+                        </ActionButton>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </Table>
+          </Card>
+        )}
+
+        {completedExams.filter(result => result.status !== 'Graded').length > 0 && (
+          <Card>
+            <PageTitle style={{ marginTop: 0 }}>Pending Results</PageTitle>
+            <div style={{ padding: '20px', backgroundColor: '#fef3c7', borderRadius: '8px', border: '1px solid #fde047' }}>
+              <p style={{ margin: '0 0 15px 0', fontSize: '14px', color: '#92400e', fontWeight: '500' }}>
+                📋 You have {completedExams.filter(result => result.status !== 'Graded').length} exam(s) that have been completed but results are not yet published:
+              </p>
+              <ul style={{ margin: '0', paddingLeft: '20px' }}>
+                {completedExams
+                  .filter(result => result.status !== 'Graded')
+                  .map((result) => (
+                    <li key={result.resultID} style={{ marginBottom: '8px', color: '#92400e', fontSize: '14px' }}>
+                      <strong>{result.examName}</strong> - Submitted on {result.submittedAt ? new Date(result.submittedAt).toLocaleDateString() : 'N/A'}
+                      <span style={{ 
+                        marginLeft: '10px',
+                        padding: '2px 8px',
+                        borderRadius: '8px',
+                        fontSize: '0.75rem',
+                        fontWeight: '500',
+                        backgroundColor: '#fbbf24',
+                        color: '#78350f'
+                      }}>
+                        Not Published Yet
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+              <p style={{ margin: '15px 0 0 0', fontSize: '13px', color: '#92400e', fontStyle: 'italic' }}>
+                Your instructor will publish the results once grading is complete.
+              </p>
+            </div>
+          </Card>
+        )}
       </MainContent>
     </DashboardContainer>
   )

@@ -640,7 +640,18 @@ export const resultService = {
       const response = await api.get(`/results/my-results`, {
         params: { page, pageSize },
       })
-      console.log("My Results Response:", response.data)
+      console.log("My Results Response:", response.data.data)
+      return response.data.data || []
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  getMyCompletedExams: async (page = 1, pageSize = 100) => {
+    try {
+      const response = await api.get(`/results/my-completed-exams`, {
+        params: { page, pageSize },
+      })
       return response.data.data || []
     } catch (error) {
       throw error.response?.data || error.message

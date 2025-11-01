@@ -40,6 +40,47 @@ namespace QuizPortalAPI.Controllers
         }
 
         /// <summary>
+        /// Get all exam attempts for logged-in student (including unpublished)
+        /// GET /api/results/my-completed-exams
+        /// Returns ALL completed exams, but masks sensitive data for unpublished results
+        /// </summary>
+        [HttpGet("my-completed-exams")]
+        [Authorize(Roles = "Student")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetMyCompletedExams([FromQuery] int page = 1, [FromQuery] int pageSize = 100)
+        {
+            try
+            {
+                if (page <= 0) page = 1;
+                if (pageSize <= 0) pageSize = 100;
+
+                var studentId = GetLoggedInUserId();
+                if (studentId == 0)
+                    return Unauthorized(new { message = "Invalid user ID" });
+
+                var results = await _resultService.GetStudentResultsAsync(studentId, page, pageSize);
+
+                _logger.LogInformation($"Student {studentId} retrieved their completed exams - {results.Count} total");
+                return Ok(new
+                {
+                    success = true,
+                    page = page,
+                    pageSize = pageSize,
+                    totalCount = results.Count,
+                    data = results
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error retrieving completed exams: {ex.Message}");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { message = "An error occurred while retrieving your completed exams" });
+            }
+        }
+
+        /// <summary>
         /// Get all exam attempts for logged-in student
         /// GET /api/results/my-results
         /// Only returns results that have been published by teacher (Status='Graded')

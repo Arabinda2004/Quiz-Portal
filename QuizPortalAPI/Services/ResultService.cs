@@ -53,6 +53,7 @@ namespace QuizPortalAPI.Services
             {
                 var result = await _context.Results
                     .Include(r => r.Exam)
+                        .ThenInclude(e => e.Questions)
                     .Include(r => r.Student)
                     .Include(r => r.EvaluatorUser)
                     .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
@@ -84,6 +85,7 @@ namespace QuizPortalAPI.Services
                 var results = await _context.Results
                     .Where(r => r.StudentID == studentId)
                     .Include(r => r.Exam)
+                        .ThenInclude(e => e.Questions)
                     .Include(r => r.Student)
                     .Include(r => r.EvaluatorUser)
                     .OrderByDescending(r => r.CreatedAt)
@@ -111,6 +113,7 @@ namespace QuizPortalAPI.Services
                 var results = await _context.Results
                     .Where(r => r.StudentID == studentId)
                     .Include(r => r.Exam)
+                        .ThenInclude(e => e.Questions)
                     .Include(r => r.Student)
                     .Include(r => r.EvaluatorUser)
                     .OrderByDescending(r => r.CreatedAt)
@@ -986,6 +989,16 @@ namespace QuizPortalAPI.Services
 
         private ResultDTO MapToResultDTO(Result result)
         {
+            // Get latest submission date from StudentResponses
+            var latestSubmission = _context.StudentResponses
+                .Where(sr => sr.ExamID == result.ExamID && sr.StudentID == result.StudentID)
+                .OrderByDescending(sr => sr.SubmittedAt)
+                .FirstOrDefault();
+
+            // Get passing percentage from ExamPublication if available
+            var publication = _context.ExamPublications
+                .FirstOrDefault(ep => ep.ExamID == result.ExamID);
+
             return new ResultDTO
             {
                 ResultID = result.ResultID,
@@ -995,14 +1008,16 @@ namespace QuizPortalAPI.Services
                 StudentName = result.Student?.FullName ?? "Unknown",
                 StudentEmail = result.Student?.Email ?? "Unknown",
                 TotalMarks = result.TotalMarks,
-                ExamTotalMarks = 0, // Will be set by caller
+                ExamTotalMarks = result.Exam?.TotalMarks ?? 0,
                 Rank = result.Rank,
                 Percentage = result.Percentage,
+                PassingPercentage = publication?.PassingPercentage ?? result.Exam?.PassingPercentage ?? 50,
                 Status = result.Status,
                 IsPublished = result.IsPublished,
                 EvaluatorName = result.EvaluatorUser?.FullName,
                 EvaluatedAt = result.EvaluatedAt,
                 PublishedAt = result.PublishedAt,
+                SubmittedAt = latestSubmission?.SubmittedAt ?? result.CreatedAt,
                 CreatedAt = result.CreatedAt
             };
         }

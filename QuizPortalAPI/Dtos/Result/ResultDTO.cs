@@ -22,6 +22,8 @@ namespace QuizPortalAPI.DTOs.Result
 
         public decimal Percentage { get; set; }
 
+        public decimal PassingPercentage { get; set; }
+
         public string Status { get; set; } = string.Empty;
 
         public bool IsPublished { get; set; }
@@ -31,6 +33,8 @@ namespace QuizPortalAPI.DTOs.Result
         public DateTime? EvaluatedAt { get; set; }
 
         public DateTime? PublishedAt { get; set; }
+
+        public DateTime? SubmittedAt { get; set; }
 
         public DateTime CreatedAt { get; set; }
     }
