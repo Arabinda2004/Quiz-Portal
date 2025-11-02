@@ -781,5 +781,45 @@ namespace QuizPortalAPI.Controllers
                     new { message = "An error occurred while retrieving your published results" });
             }
         }
+
+        /// <summary>
+        /// Recalculate ranks for all students in an exam (Teacher/Admin only)
+        /// POST /api/results/exams/{examId}/recalculate-ranks
+        /// </summary>
+        [HttpPost("exams/{examId}/recalculate-ranks")]
+        [Authorize(Roles = "Teacher,Admin")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> RecalculateExamRanks(int examId)
+        {
+            try
+            {
+                if (examId <= 0)
+                    return BadRequest(new { message = "Invalid exam ID" });
+
+                var teacherId = GetLoggedInUserId();
+                if (teacherId == 0)
+                    return Unauthorized(new { message = "Invalid user ID" });
+
+                await _resultService.RecalculateExamRanksAsync(examId);
+
+                _logger.LogInformation($"Teacher {teacherId} recalculated ranks for exam {examId}");
+                return Ok(new
+                {
+                    success = true,
+                    message = "Ranks recalculated successfully for all students in the exam"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error recalculating ranks for exam {examId}: {ex.Message}");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { message = "An error occurred while recalculating ranks" });
+            }
+        }
     }
 }

@@ -49,14 +49,21 @@ export default function StudentDashboard() {
 
   const loadDashboard = async () => {
     try {
-      // Fetch all completed exams (including unpublished)
-      const results = await resultService.getMyCompletedExams(1, 100)
-      setCompletedExams(results)
-      console.log("Printing completed exams: ", results)
-      // Count only published exams for stats
-      const publishedCount = results.filter(r => r.status === 'Graded').length
+      // Fetch only published results (same as My Results page)
+      const publishedResults = await resultService.getPublishedResults()
+      
+      // Also fetch all completed exams to show unpublished status
+      const allResults = await resultService.getMyCompletedExams(1, 100)
+      
+      console.log("Published results: ", publishedResults)
+      console.log("All completed exams: ", allResults)
+      
+      // Set completed exams to show both published and unpublished
+      setCompletedExams(allResults)
+      
+      // Stats should count all completed exams (published + unpublished)
       setStats({
-        completedExams: publishedCount,
+        completedExams: allResults.length,
       })
     } catch (err) {
       console.error('Failed to load dashboard:', err)
@@ -185,9 +192,9 @@ export default function StudentDashboard() {
           </div>
         </Card>
 
-        {completedExams.filter(result => result.status === 'Graded').length > 0 && (
+        {completedExams.filter(result => result.isPublished).length > 0 && (
           <Card>
-            <PageTitle style={{ marginTop: 0 }}>Completed Exams</PageTitle>
+            <PageTitle style={{ marginTop: 0 }}>Published Results</PageTitle>
             <Table>
               <thead>
                 <tr>
@@ -201,7 +208,7 @@ export default function StudentDashboard() {
               </thead>
               <tbody>
                 {completedExams
-                  .filter(result => result.status === 'Graded')
+                  .filter(result => result.isPublished)
                   .map((result) => (
                     <tr key={result.resultID}>
                       <td>
@@ -237,7 +244,7 @@ export default function StudentDashboard() {
                         </span>
                       </td>
                       <td>
-                        <ActionButton onClick={() => navigate(`/student/results/${result.examID}`)}>
+                        <ActionButton onClick={() => navigate(`/student/result/${result.examID}`)}>
                           View Details
                         </ActionButton>
                       </td>
@@ -248,16 +255,16 @@ export default function StudentDashboard() {
           </Card>
         )}
 
-        {completedExams.filter(result => result.status !== 'Graded').length > 0 && (
+        {completedExams.filter(result => !result.isPublished).length > 0 && (
           <Card>
             <PageTitle style={{ marginTop: 0 }}>Pending Results</PageTitle>
             <div style={{ padding: '20px', backgroundColor: '#fef3c7', borderRadius: '8px', border: '1px solid #fde047' }}>
               <p style={{ margin: '0 0 15px 0', fontSize: '14px', color: '#92400e', fontWeight: '500' }}>
-                📋 You have {completedExams.filter(result => result.status !== 'Graded').length} exam(s) that have been completed but results are not yet published:
+                📋 You have {completedExams.filter(result => !result.isPublished).length} exam(s) that have been completed but results are not yet published:
               </p>
               <ul style={{ margin: '0', paddingLeft: '20px' }}>
                 {completedExams
-                  .filter(result => result.status !== 'Graded')
+                  .filter(result => !result.isPublished)
                   .map((result) => (
                     <li key={result.resultID} style={{ marginBottom: '8px', color: '#92400e', fontSize: '14px' }}>
                       <strong>{result.examName}</strong> - Submitted on {result.submittedAt ? new Date(result.submittedAt).toLocaleDateString() : 'N/A'}

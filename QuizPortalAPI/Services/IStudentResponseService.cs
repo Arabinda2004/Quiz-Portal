@@ -30,5 +30,8 @@ namespace QuizPortalAPI.Services
         Task<int> GetStudentResponseCountAsync(int examId, int studentId);
 
         Task<bool> ResponseExistsAsync(int examId, int questionId, int studentId);
+
+        // Exam submission finalization
+        Task<QuizPortalAPI.Models.Result> FinalizeExamSubmissionAsync(int examId, int studentId);
     }
 }

@@ -12,16 +12,16 @@ export const ExamContainer = styled.div`
 export const ExamHeader = styled.div`
   background-color: white;
   border-bottom: 1px solid #e5e7eb;
-  padding: 16px 24px;
+  padding: 12px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 `
 
 export const ExamTitle = styled.h1`
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 600;
   color: #111827;
   margin: 0;
 `
@@ -33,14 +33,14 @@ export const TimerSection = styled.div`
 `
 
 export const Timer = styled.div`
-  background-color: ${props => (props.isLowTime ? '#fee' : '#f0f9ff')};
+  background-color: ${props => (props.isLowTime ? '#fee2e2' : '#eff6ff')};
   border: 2px solid ${props => (props.isLowTime ? '#dc2626' : '#3b82f6')};
-  border-radius: 8px;
-  padding: 12px 20px;
-  font-size: 16px;
-  font-weight: 700;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 15px;
+  font-weight: 600;
   color: ${props => (props.isLowTime ? '#991b1b' : '#1e40af')};
-  min-width: 140px;
+  min-width: 120px;
   text-align: center;
 `
 
@@ -48,7 +48,7 @@ export const SubmitButton = styled.button`
   background-color: #10b981;
   color: white;
   border: none;
-  padding: 10px 20px;
+  padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -70,22 +70,24 @@ export const ExamContent = styled.div`
   display: flex;
   flex: 1;
   gap: 0;
-  padding: 24px;
+  padding: 16px 20px;
   max-width: none;
+  overflow: hidden;
 `
 
 // Left panel - Questions navigator
 export const LeftPanel = styled.div`
-  width: 280px;
+  width: 260px;
   background: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   padding: 20px;
   overflow-y: auto;
-  max-height: calc(100vh - 150px);
+  max-height: calc(100vh - 140px);
 
   @media (max-width: 1024px) {
     width: 200px;
+    padding: 16px;
   }
 
   @media (max-width: 768px) {
@@ -94,10 +96,10 @@ export const LeftPanel = styled.div`
 `
 
 export const SectionTitle = styled.h3`
-  font-size: 14px;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 10px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `
@@ -109,28 +111,30 @@ export const QuestionsGrid = styled.div`
 `
 
 export const QuestionButton = styled.button`
-  aspect-ratio: 1;
+  width: 100%;
+  padding: 10px;
+  min-height: 40px;
   border: 2px solid ${props => {
-    if (props.isActive) return '#1e40af'
+    if (props.isActive) return '#3b82f6'
     if (props.status === 'answered') return '#10b981'
     if (props.status === 'skipped') return '#f59e0b'
-    return '#e5e7eb'
+    return '#d1d5db'
   }};
   background-color: ${props => {
-    if (props.isActive) return '#dbeafe'
-    if (props.status === 'answered') return '#ecfdf5'
+    if (props.isActive) return '#3b82f6'
+    if (props.status === 'answered') return '#d1fae5'
     if (props.status === 'skipped') return '#fef3c7'
     return 'white'
   }};
   color: ${props => {
-    if (props.isActive) return '#1e40af'
+    if (props.isActive) return 'white'
     if (props.status === 'answered') return '#065f46'
     if (props.status === 'skipped') return '#92400e'
     return '#6b7280'
   }};
   border-radius: 6px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   transition: all 0.2s;
   display: flex;
@@ -138,14 +142,13 @@ export const QuestionButton = styled.button`
   justify-content: center;
 
   &:hover {
-    border-color: #1e40af;
-    background-color: #dbeafe;
+    border-color: #3b82f6;
   }
 `
 
 export const LegendContainer = styled.div`
-  margin-top: 20px;
-  padding-top: 20px;
+  margin-top: 16px;
+  padding-top: 16px;
   border-top: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
@@ -173,65 +176,135 @@ export const CenterPanel = styled.div`
   background: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 24px;
-  margin-left: 24px;
-  overflow-y: auto;
-  max-height: calc(100vh - 150px);
+  padding: 16px;
+  margin-left: 20px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 122px);
+  overflow: hidden;
 
   @media (max-width: 768px) {
     margin-left: 0;
+    padding: 16px;
   }
 `
 
+export const QuestionHeader = styled.div`
+  background: #3b82f6;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+`
+
 export const QuestionNumber = styled.p`
-  color: #6b7280;
-  font-size: 13px;
-  margin-bottom: 8px;
+  color: #ffffff;
+  font-size: 11px;
+  margin: 0 0 8px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  font-weight: 600;
+  opacity: 0.9;
+`
+
+export const QuestionMetadata = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+`
+
+export const MetadataBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #ffffff;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #3b82f6;
+
+  span {
+    font-size: 12px;
+  }
 `
 
 export const QuestionText = styled.h2`
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
-  color: #111827;
-  margin-bottom: 24px;
-  line-height: 1.6;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.4;
+`
+
+export const QuestionBody = styled.div`
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 4px;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+`
+
+export const QuestionInstruction = styled.div`
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #1e40af;
+  flex-shrink: 0;
+  
+  span {
+    font-weight: 600;
+  }
 `
 
 export const OptionsContainer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  overflow: hidden;
+  flex: 1;
+  padding: 2px 0;
 `
 
 export const OptionLabel = styled.label`
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
-  padding: 14px 16px;
-  border: 2px solid #e5e7eb;
+  padding: 12px 16px;
+  border: 2px solid #d1d5db;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   background-color: white;
+  flex: 1;
+  min-height: 0;
 
   &:hover {
+    border-color: #3b82f6;
     background-color: #f9fafb;
-    border-color: #1e40af;
   }
 
   ${props =>
     props.isSelected &&
     `
     background-color: #dbeafe;
-    border-color: #1e40af;
+    border-color: #3b82f6;
   `}
 `
 
 export const RadioInput = styled.input`
-  margin-top: 3px;
   cursor: pointer;
+  width: 16px;
+  height: 16px;
+  accent-color: #3b82f6;
+  flex-shrink: 0;
 `
 
 export const OptionText = styled.span`
@@ -244,29 +317,37 @@ export const OptionText = styled.span`
 // Text area for descriptive answers
 export const AnswerTextArea = styled.textarea`
   width: 100%;
-  min-height: 200px;
+  flex: 1;
+  min-height: 0;
   padding: 12px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid #d1d5db;
   border-radius: 6px;
   font-size: 14px;
   font-family: inherit;
-  resize: vertical;
+  resize: none;
   transition: all 0.2s;
+  background-color: white;
+  line-height: 1.6;
+  overflow-y: auto;
 
   &:focus {
     outline: none;
-    border-color: #1e40af;
-    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+    border-color: #3b82f6;
+  }
+
+  &::placeholder {
+    color: #9ca3af;
   }
 `
 
 // Bottom controls
 export const ControlsContainer = styled.div`
   display: flex;
-  gap: 12px;
-  margin-top: 24px;
-  padding-top: 24px;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
 `
 
 export const PreviousButton = styled.button`
@@ -274,14 +355,14 @@ export const PreviousButton = styled.button`
   background-color: #f3f4f6;
   color: #1f2937;
   border: 1px solid #d1d5db;
-  padding: 12px 24px;
+  padding: 12px 20px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
   transition: all 0.2s;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: #e5e7eb;
   }
 
@@ -289,7 +370,7 @@ export const PreviousButton = styled.button`
     background-color: #f9fafb;
     color: #9ca3af;
     cursor: not-allowed;
-    border-color: #e5e7eb;
+    opacity: 0.6;
   }
 `
 
@@ -298,7 +379,7 @@ export const ClearButton = styled.button`
   background-color: #fef3c7;
   color: #92400e;
   border: 1px solid #fcd34d;
-  padding: 12px 24px;
+  padding: 12px 20px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -315,12 +396,12 @@ export const SaveNextButton = styled.button`
   background-color: #10b981;
   color: white;
   border: none;
-  padding: 12px 24px;
+  padding: 12px 20px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 
   &:hover {
     background-color: #059669;
@@ -329,6 +410,7 @@ export const SaveNextButton = styled.button`
   &:disabled {
     background-color: #9ca3af;
     cursor: not-allowed;
+    opacity: 0.6;
   }
 `
 

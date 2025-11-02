@@ -106,6 +106,11 @@ namespace QuizPortalAPI.Services
         Task<int> GetStudentRankAsync(int examId, int studentId);
 
         /// <summary>
+        /// Recalculate ranks for all students in an exam
+        /// </summary>
+        Task RecalculateExamRanksAsync(int examId);
+
+        /// <summary>
         /// Check if result exists
         /// </summary>
         Task<bool> ResultExistsAsync(int examId, int studentId);

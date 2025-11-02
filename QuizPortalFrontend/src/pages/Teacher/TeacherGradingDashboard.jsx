@@ -379,38 +379,8 @@ const SecondaryButton = styled(Button)`
   }
 `
 
-const GradingModal = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-`
-
-const ModalContent = styled.div`
-  background: white;
-  border-radius: 8px;
-  padding: 2rem;
-  max-width: 600px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-`
-
-const ModalTitle = styled.h2`
-  margin: 0 0 1.5rem 0;
-  color: #1f2937;
-  font-size: 1.5rem;
-`
-
 const FormGroup = styled.div`
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 `
 
 const Label = styled.label`
@@ -418,60 +388,48 @@ const Label = styled.label`
   font-weight: 600;
   color: #374151;
   margin-bottom: 0.5rem;
-  font-size: 0.95rem;
+  font-size: 0.875rem;
 `
 
 const Input = styled.input`
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.625rem;
   border: 1px solid #d1d5db;
   border-radius: 4px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-family: inherit;
 
   &:focus {
     outline: none;
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  &:disabled {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
   }
 `
 
 const Textarea = styled.textarea`
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.625rem;
   border: 1px solid #d1d5db;
   border-radius: 4px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-family: inherit;
   resize: vertical;
-  min-height: 100px;
 
   &:focus {
     outline: none;
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
-`
 
-const PreviewBox = styled.div`
-  background-color: #f3f4f6;
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
-  border-left: 4px solid #3b82f6;
-`
-
-const PreviewLabel = styled.div`
-  font-size: 0.875rem;
-  color: #6b7280;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-`
-
-const PreviewText = styled.div`
-  color: #1f2937;
-  word-break: break-word;
-  font-size: 0.95rem;
+  &:disabled {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+  }
 `
 
 const ErrorMessage = styled.div`
@@ -502,15 +460,6 @@ const WarningMessage = styled.div`
   border-radius: 4px;
   margin-bottom: 1.5rem;
   font-size: 0.95rem;
-`
-
-const ModalButtonGroup = styled.div`
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 2rem;
-  border-top: 1px solid #e5e7eb;
-  padding-top: 1.5rem;
 `
 
 const ProgressContainer = styled.div`
@@ -562,13 +511,8 @@ export default function TeacherGradingDashboard() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // Modal states
-  const [showGradingModal, setShowGradingModal] = useState(false)
-  const [editingResponseId, setEditingResponseId] = useState(null)
-  const [gradingData, setGradingData] = useState({
-    marksObtained: '',
-    feedback: '',
-  })
+  // Grading states - store marks for all responses
+  const [gradingData, setGradingData] = useState({}) // { responseID: { marksObtained: '', feedback: '' } }
   const [isExamPublished, setIsExamPublished] = useState(false)
 
   // Load students on mount
@@ -650,85 +594,111 @@ export default function TeacherGradingDashboard() {
 
   const handleSelectStudent = (student) => {
     setSelectedStudentId(student.studentId)
-    setEditingResponseId(null)
-    setGradingData({ marksObtained: '', feedback: '' })
+    // Initialize grading data for all responses with existing marks
+    setGradingData({})
   }
 
-  const handleOpenGradingModal = (responseId) => {
-    // Find the response to get current marks and feedback
-    const response = selectedStudentData?.data?.find((r) => r.responseID === responseId)
-    
-    setEditingResponseId(responseId)
-    setGradingData({
-      marksObtained: response?.marksObtained ? response.marksObtained.toString() : '',
-      feedback: response?.feedback || '',
-    })
-    setShowGradingModal(true)
+  // Update marks for a specific response
+  const handleMarksChange = (responseId, marks) => {
+    setGradingData((prev) => ({
+      ...prev,
+      [responseId]: {
+        ...prev[responseId],
+        marksObtained: marks,
+      },
+    }))
   }
 
-  const handleCloseGradingModal = () => {
-    setShowGradingModal(false)
-    setEditingResponseId(null)
-    setGradingData({ marksObtained: '', feedback: '' })
+  // Update feedback for a specific response
+  const handleFeedbackChange = (responseId, feedback) => {
+    setGradingData((prev) => ({
+      ...prev,
+      [responseId]: {
+        ...prev[responseId],
+        feedback: feedback,
+      },
+    }))
   }
 
-  const handleGradeResponse = async () => {
-    console.log('=== GRADING DEBUG ===')
-    console.log('Editing Response ID:', editingResponseId)
+  // Submit all grades at once
+  const handleSubmitAllGrades = async () => {
+    console.log('=== BATCH GRADING DEBUG ===')
     console.log('Grading Data:', gradingData)
     console.log('Selected Student Data:', selectedStudentData)
 
-    if (!gradingData.marksObtained && gradingData.marksObtained !== 0) {
-      setError('Please enter marks for this response')
+    // Validate that at least one response has marks entered
+    const responsesWithMarks = Object.entries(gradingData).filter(
+      ([responseId, data]) => data.marksObtained !== '' && data.marksObtained !== undefined
+    )
+
+    if (responsesWithMarks.length === 0) {
+      setError('Please enter marks for at least one response')
       return
     }
 
-    const marks = parseInt(gradingData.marksObtained)
-    console.log('Parsed Marks:', marks)
+    // Validate marks are within range
+    const responses = selectedStudentData?.data || []
+    const invalidMarks = []
+    
+    for (const [responseId, data] of responsesWithMarks) {
+      const response = responses.find((r) => r.responseID === parseInt(responseId))
+      if (!response) continue
 
-    const response = selectedStudentData?.data?.find((r) => r.responseID === editingResponseId)
-    console.log('Found Response:', response)
+      const marks = parseFloat(data.marksObtained)
+      const maxMarks = response.questionMarks || response.marks || 5
 
-    if (!response) {
-      setError('Response not found')
+      if (isNaN(marks) || marks < 0 || marks > maxMarks) {
+        invalidMarks.push({
+          responseId,
+          questionText: response.questionText,
+          maxMarks,
+        })
+      }
+    }
+
+    if (invalidMarks.length > 0) {
+      setError(
+        `Invalid marks for: ${invalidMarks
+          .map((item) => `"${item.questionText.substring(0, 30)}..." (must be 0-${item.maxMarks})`)
+          .join(', ')}`
+      )
       return
     }
-
-    // Get max marks from the response object (may vary by question)
-    // Default to 5 if not specified
-    const maxMarks = response.questionMarks || response.marks || 5
-    console.log('Max Marks:', maxMarks)
-
-    if (marks < 0 || marks > maxMarks) {
-      setError(`Marks must be between 0 and ${maxMarks}`)
-      return
-    }
-
-    const payload = {
-      marksObtained: marks,
-      feedback: gradingData.feedback,
-    }
-    console.log('Payload being sent:', payload)
 
     try {
       setSaving(true)
       setError('')
-      console.log('Calling gradeSingleResponse...')
-      const result = await teacherService.gradeSingleResponse(editingResponseId, payload)
-      console.log('Grade result:', result)
-      setSuccess('Response graded successfully!')
-      handleCloseGradingModal()
-      loadStudentResponses(selectedStudentId)
-      setTimeout(() => setSuccess(''), 3000)
+      
+      // Grade each response individually
+      let successCount = 0
+      let failCount = 0
+      
+      for (const [responseId, data] of responsesWithMarks) {
+        try {
+          await teacherService.gradeSingleResponse(parseInt(responseId), {
+            marksObtained: parseFloat(data.marksObtained),
+            feedback: data.feedback || '',
+          })
+          successCount++
+        } catch (err) {
+          console.error(`Failed to grade response ${responseId}:`, err)
+          failCount++
+        }
+      }
+      
+      if (successCount > 0) {
+        setSuccess(`Successfully graded ${successCount} response(s)!${failCount > 0 ? ` (${failCount} failed)` : ''}`)
+        setGradingData({}) // Clear grading data
+        loadStudentResponses(selectedStudentId) // Reload responses
+        setTimeout(() => setSuccess(''), 3000)
+      }
+      
+      if (failCount > 0 && successCount === 0) {
+        setError('Failed to grade all responses. Please try again.')
+      }
     } catch (err) {
-      console.error('Error grading response:', err)
-      console.error('Error details:', { 
-        message: err?.message,
-        data: err?.data,
-        response: err?.response,
-        fullError: err
-      })
-      setError(err?.message || JSON.stringify(err) || 'Failed to grade response')
+      console.error('Error batch grading:', err)
+      setError(err?.message || 'Failed to submit grades')
     } finally {
       setSaving(false)
     }
@@ -875,42 +845,82 @@ export default function TeacherGradingDashboard() {
                     </CardHeader>
                     <CardBody $maxHeight="700px">
                       {selectedStudentData?.data && selectedStudentData.data.length > 0 ? (
-                        selectedStudentData.data.map((response, index) => {
-                          console.log('Response object:', response)
-                          return (
-                          <ResponseItem key={response.responseID || index}>
-                            <QuestionText>
-                              Q{index + 1}. {response.questionText || 'Question text not available'}
-                            </QuestionText>
+                        <>
+                          {selectedStudentData.data.map((response, index) => {
+                            const maxMarks = response.questionMarks || response.marks || 5
+                            const currentMarks = gradingData[response.responseID]?.marksObtained ?? 
+                                               (response.marksObtained > 0 ? response.marksObtained : '')
+                            const currentFeedback = gradingData[response.responseID]?.feedback ?? 
+                                                   (response.feedback || '')
+                            
+                            return (
+                              <ResponseItem key={response.responseID || index}>
+                                <QuestionText>
+                                  Q{index + 1}. {response.questionText || 'Question text not available'}
+                                </QuestionText>
 
-                            <AnswerBox>
-                              <strong>Student's Answer:</strong>
-                              <div style={{ marginTop: '0.5rem' }}>
-                                {response.answerText || <em>Not answered</em>}
-                              </div>
-                            </AnswerBox>
+                                <AnswerBox>
+                                  <strong>Student's Answer:</strong>
+                                  <div style={{ marginTop: '0.5rem' }}>
+                                    {response.answerText || <em>Not answered</em>}
+                                  </div>
+                                </AnswerBox>
 
-                            <ResponseFooter>
-                              <div>
-                                <StatusBadge $status={response.marksObtained > 0 ? 'graded' : 'pending'}>
-                                  {response.marksObtained > 0 ? 'Graded' : 'Pending'}
-                                </StatusBadge>
-                                {response.marksObtained > 0 && (
-                                  <MarksDisplay style={{ marginLeft: '0.75rem', display: 'inline' }}>
-                                    {response.marksObtained} marks
-                                  </MarksDisplay>
-                                )}
-                              </div>
-                              <PrimaryButton
-                                onClick={() => handleOpenGradingModal(response.responseID)}
-                                disabled={isExamPublished}
-                                title={isExamPublished ? 'Cannot edit marks - exam is published' : ''}
-                              >
-                                {response.marksObtained > 0 ? 'Edit' : 'Grade'}
-                              </PrimaryButton>
-                            </ResponseFooter>
-                          </ResponseItem>
-                        )})
+                                {/* Inline Grading Inputs */}
+                                <div style={{ marginTop: '1rem' }}>
+                                  <FormGroup>
+                                    <Label>
+                                      Marks (Max: {maxMarks})
+                                      {response.marksObtained > 0 && (
+                                        <span style={{ marginLeft: '0.5rem', color: '#10b981', fontSize: '0.85rem' }}>
+                                          (Previously: {response.marksObtained})
+                                        </span>
+                                      )}
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      max={maxMarks}
+                                      step="0.5"
+                                      value={currentMarks}
+                                      onChange={(e) => handleMarksChange(response.responseID, e.target.value)}
+                                      placeholder="Enter marks"
+                                      disabled={isExamPublished}
+                                    />
+                                  </FormGroup>
+
+                                  <FormGroup style={{ marginTop: '0.75rem' }}>
+                                    <Label>Feedback (Optional)</Label>
+                                    <Textarea
+                                      value={currentFeedback}
+                                      onChange={(e) => handleFeedbackChange(response.responseID, e.target.value)}
+                                      placeholder="Provide feedback to the student..."
+                                      disabled={isExamPublished}
+                                      style={{ minHeight: '80px' }}
+                                    />
+                                  </FormGroup>
+                                </div>
+
+                                <ResponseFooter>
+                                  <StatusBadge $status={response.marksObtained > 0 ? 'graded' : 'pending'}>
+                                    {response.marksObtained > 0 ? 'Previously Graded' : 'Pending'}
+                                  </StatusBadge>
+                                </ResponseFooter>
+                              </ResponseItem>
+                            )
+                          })}
+
+                          {/* Submit Button */}
+                          <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+                            <PrimaryButton
+                              onClick={handleSubmitAllGrades}
+                              disabled={saving || isExamPublished}
+                              style={{ fontSize: '1rem', padding: '0.875rem 2rem' }}
+                            >
+                              {saving ? 'Submitting...' : '✓ Submit All Grades'}
+                            </PrimaryButton>
+                          </div>
+                        </>
                       ) : (
                         <EmptyState>No responses available</EmptyState>
                       )}
@@ -928,88 +938,6 @@ export default function TeacherGradingDashboard() {
           </DashboardGrid>
         )}
       </MainContent>
-
-      {/* GRADING MODAL */}
-      {showGradingModal && selectedStudentData && editingResponseId && (
-        <GradingModal onClick={handleCloseGradingModal}>
-          <ModalContent onClick={(e) => e.stopPropagation()}>
-            {(() => {
-              const response = selectedStudentData.data.find((r) => r.responseID === editingResponseId)
-              if (!response) return null
-
-              const maxMarks = response.questionMarks || response.marks || 5
-
-              return (
-                <>
-                  <ModalTitle>Grade Response</ModalTitle>
-
-                  <PreviewBox>
-                    <PreviewLabel>Question</PreviewLabel>
-                    <PreviewText>{response.questionText || 'Question not available'}</PreviewText>
-                  </PreviewBox>
-
-                  <PreviewBox>
-                    <PreviewLabel>Student's Answer</PreviewLabel>
-                    <PreviewText>{response.answerText || <em>Not answered</em>}</PreviewText>
-                  </PreviewBox>
-
-                  <FormGroup>
-                    <Label>Marks Obtained (Max: {maxMarks})</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      max={maxMarks}
-                      value={gradingData.marksObtained}
-                      onChange={(e) => {
-                        console.log('Marks input changed:', e.target.value)
-                        setGradingData((prev) => {
-                          const updated = {
-                            ...prev,
-                            marksObtained: e.target.value,
-                          }
-                          console.log('Updated grading data:', updated)
-                          return updated
-                        })
-                      }}
-                      placeholder="Enter marks"
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <Label>Feedback (Optional)</Label>
-                    <Textarea
-                      value={gradingData.feedback}
-                      onChange={(e) => {
-                        console.log('Feedback changed:', e.target.value)
-                        setGradingData((prev) => ({
-                          ...prev,
-                          feedback: e.target.value,
-                        }))
-                      }}
-                      placeholder="Provide feedback to the student..."
-                    />
-                  </FormGroup>
-
-                  {error && <ErrorMessage>{error}</ErrorMessage>}
-
-                  <ModalButtonGroup>
-                    <SecondaryButton onClick={handleCloseGradingModal}>Cancel</SecondaryButton>
-                    <PrimaryButton 
-                      onClick={() => {
-                        console.log('Grade button clicked!')
-                        handleGradeResponse()
-                      }} 
-                      disabled={saving}
-                    >
-                      {saving ? 'Saving...' : 'Submit Grade'}
-                    </PrimaryButton>
-                  </ModalButtonGroup>
-                </>
-              )
-            })()}
-          </ModalContent>
-        </GradingModal>
-      )}
     </Container>
   )
 }

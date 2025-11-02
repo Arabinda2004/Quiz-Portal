@@ -371,6 +371,18 @@ export const studentService = {
     }
   },
 
+  // Finalize exam submission
+  finalizeExamSubmission: async (examId) => {
+    try {
+      const response = await api.post(`/exams/${examId}/responses/submit`)
+      return response.data
+    } catch (error) {
+      console.error('API Error in finalizeExamSubmission:', error)
+      const errorData = error.response?.data
+      throw errorData?.message || errorData || error.message || 'Failed to finalize exam submission'
+    }
+  },
+
   // Get exam responses
   getExamResponses: async (examId) => {
     try {

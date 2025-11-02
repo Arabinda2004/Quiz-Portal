@@ -272,6 +272,12 @@ export default function ResultDetail() {
       
       const data = await resultService.getExamResultDetails(examId)
       console.log('Result Details:', data)
+      console.log('Result Details - Full Object:', JSON.stringify(data, null, 2))
+      
+      // Validate data structure
+      if (!data) {
+        throw new Error('No result data received')
+      }
       
       setResultDetails(data)
     } catch (err) {
@@ -343,11 +349,25 @@ export default function ResultDetail() {
     )
   }
 
+  // Safely extract and validate data with fallbacks
   const percentage = resultDetails?.percentage || 0
+  const totalMarks = resultDetails?.totalMarks || 0
+  const examTotalMarks = resultDetails?.examTotalMarks || 0
   const isPassed = percentage >= 50
   const correctCount = resultDetails?.correctAnswers || 0
   const totalQuestions = resultDetails?.totalQuestions || 0
   const unansweredCount = resultDetails?.unansweredCount || 0
+  
+  // Log for debugging
+  console.log('Display Data:', {
+    percentage,
+    totalMarks,
+    examTotalMarks,
+    isPassed,
+    correctCount,
+    totalQuestions,
+    unansweredCount
+  })
 
   return (
     <Container>
@@ -381,8 +401,8 @@ export default function ResultDetail() {
 
             <SummaryItem>
               <SummaryLabel>Marks Obtained</SummaryLabel>
-              <SummaryValue>{resultDetails?.totalMarks?.toFixed(2) || 0}</SummaryValue>
-              <SummarySubValue>out of {resultDetails?.examTotalMarks || 'N/A'}</SummarySubValue>
+              <SummaryValue>{totalMarks?.toFixed(2) || '0.00'}</SummaryValue>
+              <SummarySubValue>out of {examTotalMarks || 'N/A'}</SummarySubValue>
             </SummaryItem>
 
             <SummaryItem>

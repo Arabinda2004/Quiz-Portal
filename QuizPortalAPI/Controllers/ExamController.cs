@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using QuizPortalAPI.Data;
 using QuizPortalAPI.DTOs.Exam;
+using QuizPortalAPI.Models;
 using QuizPortalAPI.Services;
 using System.Security.Claims;
 
@@ -12,11 +15,13 @@ namespace QuizPortalAPI.Controllers
     {
         private readonly IExamService _examService;
         private readonly ILogger<ExamController> _logger;
+        private readonly AppDbContext _context;
 
-        public ExamController(IExamService examService, ILogger<ExamController> logger)
+        public ExamController(IExamService examService, ILogger<ExamController> logger, AppDbContext context)
         {
             _examService = examService;
             _logger = logger;
+            _context = context;
         }
 
         /// <summary>
@@ -334,6 +339,17 @@ namespace QuizPortalAPI.Controllers
                     return NotFound(new { message = "Exam not found" });
                 }
 
+                // ✅ Check if student has already submitted this exam (Result with status "Completed" or "Graded")
+                var existingResult = await _context.Results
+                    .FirstOrDefaultAsync(r => r.ExamID == id && r.StudentID == studentId && 
+                        (r.Status == "Completed" || r.Status == "Graded"));
+                
+                if (existingResult != null)
+                {
+                    _logger.LogWarning($"Student {studentId} attempted to re-access already submitted exam {id}");
+                    return BadRequest(new { message = "You have already submitted this exam. You cannot access it again." });
+                }
+
                 // ✅ Check if exam is accessible (within schedule)
                 var now = DateTime.UtcNow;
                 if (now < exam.ScheduleStart || now > exam.ScheduleEnd)
@@ -410,6 +426,24 @@ namespace QuizPortalAPI.Controllers
                 {
                     _logger.LogInformation($"Student access denied: {accessResponse.Message}");
                     return Ok(new { canAttempt = false, message = accessResponse.Message });
+                }
+
+                // ✅ Check if authenticated student has already submitted this exam
+                var studentId = GetLoggedInUserId();
+                if (studentId > 0 && accessResponse.ExamID > 0)
+                {
+                    var existingResult = await _context.Results
+                        .FirstOrDefaultAsync(r => r.ExamID == accessResponse.ExamID && r.StudentID == studentId && 
+                            (r.Status == "Completed" || r.Status == "Graded"));
+                    
+                    if (existingResult != null)
+                    {
+                        _logger.LogWarning($"Student {studentId} attempted to re-access already submitted exam {accessResponse.ExamID}");
+                        return Ok(new { 
+                            canAttempt = false, 
+                            message = "You have already submitted this exam. You cannot access it again." 
+                        });
+                    }
                 }
 
                 _logger.LogInformation($"Student granted access to exam {accessResponse.ExamID}");

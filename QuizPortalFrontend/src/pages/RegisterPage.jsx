@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { authService } from '../services/api'
@@ -28,7 +28,20 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, isAuthenticated, user } = useAuth()
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'Teacher') {
+        navigate('/teacher/dashboard', { replace: true })
+      } else if (user.role === 'Student') {
+        navigate('/student/dashboard', { replace: true })
+      } else if (user.role === 'Admin') {
+        navigate('/admin/dashboard', { replace: true })
+      }
+    }
+  }, [isAuthenticated, user, navigate])
 
   const handleChange = (e) => {
     const { name, value } = e.target

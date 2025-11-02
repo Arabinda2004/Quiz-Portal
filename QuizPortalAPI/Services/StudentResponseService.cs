@@ -769,5 +769,78 @@ namespace QuizPortalAPI.Services
                 QuestionMarks = question.Marks
             };
         }
+
+        /// <summary>
+        /// Finalize exam submission by creating a Result record
+        /// This marks the exam as completed and prevents re-access
+        /// </summary>
+        public async Task<Result> FinalizeExamSubmissionAsync(int examId, int studentId)
+        {
+            try
+            {
+                _logger.LogInformation($"Finalizing exam submission for student {studentId}, exam {examId}");
+
+                // ✅ Check if exam exists
+                var exam = await _context.Exams.FindAsync(examId);
+                if (exam == null)
+                {
+                    _logger.LogWarning($"Exam {examId} not found when finalizing submission");
+                    throw new InvalidOperationException("Exam not found");
+                }
+
+                // ✅ Check if result already exists
+                var existingResult = await _context.Results
+                    .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
+
+                if (existingResult != null)
+                {
+                    _logger.LogInformation($"Found existing result {existingResult.ResultID} with status {existingResult.Status}");
+                    
+                    // If result exists but is pending, update it to completed
+                    if (existingResult.Status == "Pending")
+                    {
+                        existingResult.Status = "Completed";
+                        existingResult.UpdatedAt = DateTime.UtcNow;
+                        await _context.SaveChangesAsync();
+                        _logger.LogInformation($"Updated existing result {existingResult.ResultID} to Completed status");
+                        return existingResult;
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Exam already submitted with status {existingResult.Status}");
+                        throw new InvalidOperationException("Exam has already been submitted");
+                    }
+                }
+
+                // ✅ Create new result record
+                _logger.LogInformation($"Creating new result record for student {studentId}, exam {examId}");
+                
+                var result = new Result
+                {
+                    ExamID = examId,
+                    StudentID = studentId,
+                    Status = "Completed",
+                    TotalMarks = 0, // Will be calculated during grading
+                    Percentage = 0, // Will be calculated during grading
+                    IsPublished = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Results.Add(result);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"Successfully created result {result.ResultID} for student {studentId} exam {examId}");
+                return result;
+            }
+            catch (InvalidOperationException)
+            {
+                throw; // Re-throw business logic exceptions
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error finalizing exam submission for student {studentId}, exam {examId}: {ex.Message}\nStack trace: {ex.StackTrace}");
+                throw new InvalidOperationException($"Failed to finalize exam submission: {ex.Message}", ex);
+            }
+        }
     }
 }

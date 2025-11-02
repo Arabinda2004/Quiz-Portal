@@ -544,5 +544,54 @@ namespace QuizPortalAPI.Controllers
                     new { message = "An error occurred while retrieving the response" });
             }
         }
+
+        /// <summary>
+        /// Finalize exam submission - creates a Result record to mark exam as completed
+        /// POST /api/exams/{examId}/responses/submit
+        /// </summary>
+        [HttpPost("submit")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> FinalizeExamSubmission(int examId)
+        {
+            try
+            {
+                // ✅ Validate input
+                if (examId <= 0)
+                    return BadRequest(new { message = "Invalid exam ID" });
+
+                var studentId = GetLoggedInUserId();
+                if (studentId == 0)
+                    return Unauthorized(new { message = "Invalid user ID" });
+
+                // ✅ Finalize exam submission
+                var result = await _responseService.FinalizeExamSubmissionAsync(examId, studentId);
+                
+                _logger.LogInformation($"Student {studentId} finalized submission for exam {examId}");
+                return Ok(new { 
+                    message = "Exam submitted successfully", 
+                    data = new {
+                        resultID = result.ResultID,
+                        examID = result.ExamID,
+                        status = result.Status,
+                        submittedAt = DateTime.UtcNow
+                    }
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning($"Invalid submission attempt: {ex.Message}");
+                return Conflict(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error finalizing exam submission: {ex.Message}");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { message = "An error occurred while finalizing your exam submission" });
+            }
+        }
     }
 }

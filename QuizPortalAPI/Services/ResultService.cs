@@ -53,7 +53,7 @@ namespace QuizPortalAPI.Services
             {
                 var result = await _context.Results
                     .Include(r => r.Exam)
-                        .ThenInclude(e => e.Questions)
+                        .ThenInclude(e => e!.Questions)
                     .Include(r => r.Student)
                     .Include(r => r.EvaluatorUser)
                     .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
@@ -85,7 +85,7 @@ namespace QuizPortalAPI.Services
                 var results = await _context.Results
                     .Where(r => r.StudentID == studentId)
                     .Include(r => r.Exam)
-                        .ThenInclude(e => e.Questions)
+                        .ThenInclude(e => e!.Questions)
                     .Include(r => r.Student)
                     .Include(r => r.EvaluatorUser)
                     .OrderByDescending(r => r.CreatedAt)
@@ -113,7 +113,7 @@ namespace QuizPortalAPI.Services
                 var results = await _context.Results
                     .Where(r => r.StudentID == studentId)
                     .Include(r => r.Exam)
-                        .ThenInclude(e => e.Questions)
+                        .ThenInclude(e => e!.Questions)
                     .Include(r => r.Student)
                     .Include(r => r.EvaluatorUser)
                     .OrderByDescending(r => r.CreatedAt)
@@ -764,18 +764,65 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var studentMarks = await GetStudentTotalMarksAsync(examId, studentId);
+                // Get the student's total marks from their responses
+                var studentMarks = await _context.StudentResponses
+                    .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
+                    .SumAsync(sr => sr.MarksObtained);
 
-                var rank = await _context.Results
-                    .Where(r => r.ExamID == examId && r.TotalMarks > studentMarks)
+                // Calculate rank based on how many students have higher marks
+                // Group by student and calculate their total marks from responses
+                var higherScoringStudents = await _context.StudentResponses
+                    .Where(sr => sr.ExamID == examId)
+                    .GroupBy(sr => sr.StudentID)
+                    .Select(g => new
+                    {
+                        StudentID = g.Key,
+                        TotalMarks = g.Sum(sr => sr.MarksObtained)
+                    })
+                    .Where(s => s.TotalMarks > studentMarks)
                     .CountAsync();
 
-                return rank + 1;
+                return higherScoringStudents + 1;
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Error calculating rank: {ex.Message}");
                 return 0;
+            }
+        }
+
+        /// <summary>
+        /// Recalculate ranks for all students in an exam
+        /// </summary>
+        public async Task RecalculateExamRanksAsync(int examId)
+        {
+            try
+            {
+                // Get all students who have results for this exam
+                var results = await _context.Results
+                    .Where(r => r.ExamID == examId)
+                    .ToListAsync();
+
+                if (results.Count == 0)
+                {
+                    _logger.LogWarning($"No results found for exam {examId} to recalculate ranks");
+                    return;
+                }
+
+                // Calculate rank for each student
+                foreach (var result in results)
+                {
+                    result.Rank = await GetStudentRankAsync(examId, result.StudentID);
+                    _context.Results.Update(result);
+                }
+
+                await _context.SaveChangesAsync();
+                _logger.LogInformation($"Recalculated ranks for {results.Count} students in exam {examId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error recalculating ranks for exam {examId}: {ex.Message}");
+                throw;
             }
         }
 
@@ -989,6 +1036,11 @@ namespace QuizPortalAPI.Services
 
         private ResultDTO MapToResultDTO(Result result)
         {
+            // Calculate exam total marks from questions (synchronous for performance)
+            var examTotalMarks = _context.Questions
+                .Where(q => q.ExamID == result.ExamID)
+                .Sum(q => (decimal?)q.Marks) ?? 0;
+
             // Get latest submission date from StudentResponses
             var latestSubmission = _context.StudentResponses
                 .Where(sr => sr.ExamID == result.ExamID && sr.StudentID == result.StudentID)
@@ -999,6 +1051,30 @@ namespace QuizPortalAPI.Services
             var publication = _context.ExamPublications
                 .FirstOrDefault(ep => ep.ExamID == result.ExamID);
 
+            // Calculate rank if not set (synchronously for performance)
+            int rank = result.Rank ?? 0;
+            if (rank == 0 || !result.Rank.HasValue)
+            {
+                // Get the student's total marks from their responses
+                var studentMarks = _context.StudentResponses
+                    .Where(sr => sr.ExamID == result.ExamID && sr.StudentID == result.StudentID)
+                    .Sum(sr => (decimal?)sr.MarksObtained) ?? 0;
+
+                // Calculate rank based on how many students have higher marks
+                var higherScoringStudents = _context.StudentResponses
+                    .Where(sr => sr.ExamID == result.ExamID)
+                    .GroupBy(sr => sr.StudentID)
+                    .Select(g => new
+                    {
+                        StudentID = g.Key,
+                        TotalMarks = g.Sum(sr => sr.MarksObtained)
+                    })
+                    .Count(s => s.TotalMarks > studentMarks);
+
+                rank = higherScoringStudents + 1;
+                _logger.LogInformation($"Calculated rank {rank} for student {result.StudentID} in exam {result.ExamID} (marks: {studentMarks}, higher scoring: {higherScoringStudents})");
+            }
+
             return new ResultDTO
             {
                 ResultID = result.ResultID,
@@ -1008,8 +1084,8 @@ namespace QuizPortalAPI.Services
                 StudentName = result.Student?.FullName ?? "Unknown",
                 StudentEmail = result.Student?.Email ?? "Unknown",
                 TotalMarks = result.TotalMarks,
-                ExamTotalMarks = result.Exam?.TotalMarks ?? 0,
-                Rank = result.Rank,
+                ExamTotalMarks = examTotalMarks,
+                Rank = rank,
                 Percentage = result.Percentage,
                 PassingPercentage = publication?.PassingPercentage ?? result.Exam?.PassingPercentage ?? 50,
                 Status = result.Status,
@@ -1215,6 +1291,19 @@ namespace QuizPortalAPI.Services
                 // ✅ Get grading progress
                 var totalStudents = results.Count;
 
+                // ✅ Recalculate ranks for all students before publishing
+                _logger.LogInformation($"Recalculating ranks for {totalStudents} students in exam {examId}");
+                foreach (var result in results)
+                {
+                    // Update total marks first
+                    result.TotalMarks = await _context.StudentResponses
+                        .Where(sr => sr.ExamID == examId && sr.StudentID == result.StudentID)
+                        .SumAsync(sr => sr.MarksObtained);
+                    
+                    // Recalculate rank
+                    result.Rank = await GetStudentRankAsync(examId, result.StudentID);
+                }
+
                 // ✅ Mark all results as published and graded (since all responses are confirmed to be graded)
                 var publishedCount = 0;
                 foreach (var result in results)
@@ -1382,6 +1471,7 @@ namespace QuizPortalAPI.Services
                     .Where(r => r.StudentID == studentId && r.IsPublished)
                     .Include(r => r.Exam)
                     .Include(r => r.Student)
+                    // .Include(r => r.TotalMarks)
                     .Include(r => r.EvaluatorUser)
                     .OrderByDescending(r => r.PublishedAt)
                     .ToListAsync();

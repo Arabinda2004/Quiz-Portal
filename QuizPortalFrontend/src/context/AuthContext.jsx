@@ -34,9 +34,20 @@ export function AuthProvider({ children }) {
     setIsAuthenticated(true)
   }
 
-  const logout = () => {
-    setUser(null)
-    setIsAuthenticated(false)
+  const logout = async () => {
+    try {
+      // Call the logout API to clear cookies on the server
+      await fetch('http://localhost:5242/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      // Clear local state regardless of API call result
+      setUser(null)
+      setIsAuthenticated(false)
+    }
   }
 
   return (

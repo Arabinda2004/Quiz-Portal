@@ -263,6 +263,12 @@ export default function MyResults() {
       
       const data = await resultService.getPublishedResults()
       console.log('Published Results:', data)
+      console.log('Published Results - Full Data:', JSON.stringify(data, null, 2))
+      
+      // Validate data is array
+      if (!Array.isArray(data)) {
+        console.warn('Expected array but got:', typeof data)
+      }
       
       setResults(Array.isArray(data) ? data : [])
     } catch (err) {
@@ -331,7 +337,19 @@ export default function MyResults() {
           <ResultsGrid>
             {results.map((result) => {
               const percentage = result.percentage || 0
-              const isPassed = percentage >= 50
+              const totalMarks = result.totalMarks || 0
+              const examTotalMarks = result.examTotalMarks || 0
+              const isPassed = percentage >= result.passingPercentage
+              
+              // Debug log for each result
+              console.log(`Result ${result.resultID}:`, {
+                examName: result.examName,
+                percentage,
+                totalMarks,
+                examTotalMarks,
+                status: result.status,
+                isPassed
+              })
               
               return (
                 <ResultCard key={result.resultID} onClick={() => handleViewDetails(result.examID)}>
@@ -351,7 +369,7 @@ export default function MyResults() {
                     <DetailItem>
                       <DetailLabel>Total Marks</DetailLabel>
                       <DetailValue>
-                        {result.totalMarks?.toFixed(2) || 0} / {result.examTotalMarks || 'N/A'}
+                        {totalMarks.toFixed(2)} / {examTotalMarks || 'N/A'}
                       </DetailValue>
                     </DetailItem>
                     <DetailItem>
