@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import styled from 'styled-components'
 import { useAuth } from '../context/AuthContext'
 import { authService } from '../services/api'
 import {
@@ -68,6 +69,9 @@ export default function LoginPage() {
 
   return (
     <AuthContainer>
+      <BackButton onClick={() => navigate('/')}>
+        ← Back to Home
+      </BackButton>
       <AuthCard>
         <Title>Quiz Portal</Title>
         <Subtitle>Sign in to your account</Subtitle>
@@ -113,3 +117,34 @@ export default function LoginPage() {
     </AuthContainer>
   )
 }
+
+const BackButton = styled.button`
+  position: absolute;
+  top: 2rem;
+  left: 2rem;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  color: #1E40AF;
+  border: 2px solid #1E40AF;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  &:hover {
+    background: #1E40AF;
+    color: white;
+    transform: translateX(-5px);
+  }
+
+  @media (max-width: 768px) {
+    top: 1rem;
+    left: 1rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+`

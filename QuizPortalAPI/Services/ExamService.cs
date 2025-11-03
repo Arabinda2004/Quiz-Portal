@@ -23,7 +23,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                // ✅ Validate teacher exists and is a teacher
+                // Validate teacher exists and is a teacher
                 var teacher = await _context.Users.FindAsync(teacherId);
                 if (teacher == null || teacher.Role != UserRole.Teacher)
                 {
@@ -31,50 +31,51 @@ namespace QuizPortalAPI.Services
                     throw new UnauthorizedAccessException("Only teachers can create exams");
                 }
 
-                // ✅ Validate input data
+                // Validate input data (defensive checks)
                 if (createExamDTO == null)
                     throw new ArgumentNullException(nameof(createExamDTO));
 
                 if (string.IsNullOrWhiteSpace(createExamDTO.Title))
                     throw new InvalidOperationException("Exam title is required");
 
-                // ✅ Validate schedule: Start < End
+                // Validate schedule: Start < End
                 if (createExamDTO.ScheduleStart >= createExamDTO.ScheduleEnd)
                     throw new InvalidOperationException("Schedule start time must be before end time");
 
-                // ✅ Validate schedule: Both times are in future
+                // Validate schedule: Both times are in future
                 if (createExamDTO.ScheduleStart < DateTime.UtcNow)
                     throw new InvalidOperationException("Schedule start time must be in the future");
 
-                // ✅ Validate duration
+                // Validate duration
                 if (createExamDTO.DurationMinutes <= 0)
                     throw new InvalidOperationException("Duration must be greater than 0");
 
-                // ✅ Validate duration doesn't exceed schedule window
+                // Validate duration doesn't exceed schedule window
                 var scheduleWindowMinutes = (createExamDTO.ScheduleEnd - createExamDTO.ScheduleStart).TotalMinutes;
                 if (createExamDTO.DurationMinutes > scheduleWindowMinutes)
                     throw new InvalidOperationException(
                         $"Exam duration ({createExamDTO.DurationMinutes} minutes) cannot exceed the time window between start and end times ({scheduleWindowMinutes:F0} minutes)");
 
-                // ✅ Validate passing percentage
+                // Validate passing percentage
                 if (createExamDTO.PassingPercentage < 0 || createExamDTO.PassingPercentage > 100)
                     throw new InvalidOperationException("Passing percentage must be between 0 and 100");
 
-                // ✅ Validate password strength
+                // Validate password strength
                 if (string.IsNullOrWhiteSpace(createExamDTO.AccessPassword) || createExamDTO.AccessPassword.Length < 6)
                     throw new InvalidOperationException("Access password must be at least 6 characters");
 
-                // ✅ Generate unique access code
+                // Generate unique access code
                 string accessCode = GenerateAccessCode();
+                // if there is an exam exists with the same access code, then generate a new one
                 while (await ExamExistsByAccessCodeAsync(accessCode))
                 {
                     accessCode = GenerateAccessCode();
                 }
 
-                // ✅ Hash the access password
+                // Hash the access password
                 string hashedPassword = BCrypt.Net.BCrypt.HashPassword(createExamDTO.AccessPassword);
 
-                // ✅ Create exam entity
+                // Create exam entity
                 var exam = new Exam
                 {
                     Title = createExamDTO.Title,
@@ -91,7 +92,7 @@ namespace QuizPortalAPI.Services
                     CreatedAt = DateTime.UtcNow
                 };
 
-                // ✅ Save to database
+                // Save to database
                 _context.Exams.Add(exam);
                 await _context.SaveChangesAsync();
 
@@ -198,14 +199,133 @@ namespace QuizPortalAPI.Services
         /// <summary>
         /// Teacher updates their exam
         /// </summary>
+        // public async Task<ExamResponseDTO?> UpdateExamAsync(int examId, int teacherId, UpdateExamDTO updateExamDTO)
+        // {
+        //     try
+        //     {
+        //         if (updateExamDTO == null)
+        //             throw new ArgumentNullException(nameof(updateExamDTO));
+
+        //         // Get exam
+        //         var exam = await _context.Exams
+        //             .Include(e => e.CreatedByUser)
+        //             .FirstOrDefaultAsync(e => e.ExamID == examId);
+
+        //         if (exam == null)
+        //         {
+        //             _logger.LogWarning($"Exam {examId} not found");
+        //             return null;
+        //         }
+
+        //         // Verify ownership
+        //         if (exam.CreatedBy != teacherId)
+        //         {
+        //             _logger.LogWarning($"Teacher {teacherId} attempted to update exam {examId} they don't own");
+        //             throw new UnauthorizedAccessException("You can only update your own exams");
+        //         }
+
+        //         // Prevent updates if exam is active or ended
+        //         if (DateTime.UtcNow >= exam.ScheduleStart)
+        //         {
+        //             _logger.LogWarning($"Attempted to update exam {examId} that is active or has ended");
+        //             throw new InvalidOperationException("Exam details can only be updated while the exam is upcoming. Once an exam starts, it cannot be modified.");
+        //         }
+
+        //         // Update allowed fields
+        //         if (!string.IsNullOrWhiteSpace(updateExamDTO.Title))
+        //         {
+        //             if (updateExamDTO.Title.Length < 3 || updateExamDTO.Title.Length > 200)
+        //                 throw new InvalidOperationException("Title must be between 3 and 200 characters");
+        //             exam.Title = updateExamDTO.Title;
+        //         }
+
+        //         if (updateExamDTO.Description != null)
+        //             exam.Description = updateExamDTO.Description;
+
+        //         if (updateExamDTO.BatchRemark != null)
+        //             exam.BatchRemark = updateExamDTO.BatchRemark;
+
+        //         if (updateExamDTO.DurationMinutes.HasValue)
+        //         {
+        //             if (updateExamDTO.DurationMinutes <= 0)
+        //                 throw new InvalidOperationException("Duration must be greater than 0");
+        //             exam.DurationMinutes = updateExamDTO.DurationMinutes.Value;
+        //         }
+
+        //         if (updateExamDTO.ScheduleStart.HasValue && updateExamDTO.ScheduleEnd.HasValue)
+        //         {
+        //             if (updateExamDTO.ScheduleStart >= updateExamDTO.ScheduleEnd)
+        //                 throw new InvalidOperationException("Schedule start must be before end");
+        //             exam.ScheduleStart = updateExamDTO.ScheduleStart.Value;
+        //             exam.ScheduleEnd = updateExamDTO.ScheduleEnd.Value;
+        //         }
+        //         else if (updateExamDTO.ScheduleStart.HasValue || updateExamDTO.ScheduleEnd.HasValue)
+        //         {
+        //             throw new InvalidOperationException("Both schedule start and end times must be provided together");
+        //         }
+
+        //         // Validate duration doesn't exceed schedule window (after updates)
+        //         var scheduleWindowMinutes = (exam.ScheduleEnd - exam.ScheduleStart).TotalMinutes;
+        //         if (exam.DurationMinutes > scheduleWindowMinutes)
+        //             throw new InvalidOperationException(
+        //                 $"Exam duration ({exam.DurationMinutes} minutes) cannot exceed the time window between start and end times ({scheduleWindowMinutes:F0} minutes)");
+
+        //         if (updateExamDTO.PassingPercentage.HasValue)
+        //         {
+        //             if (updateExamDTO.PassingPercentage < 0 || updateExamDTO.PassingPercentage > 100)
+        //                 throw new InvalidOperationException("Passing percentage must be between 0 and 100");
+        //             exam.PassingPercentage = updateExamDTO.PassingPercentage.Value;
+        //         }
+
+        //         if (updateExamDTO.HasNegativeMarking.HasValue)
+        //             exam.HasNegativeMarking = updateExamDTO.HasNegativeMarking.Value;
+
+        //         // Update password if provided
+        //         if (!string.IsNullOrWhiteSpace(updateExamDTO.AccessPassword))
+        //         {
+        //             if (updateExamDTO.AccessPassword.Length < 6)
+        //                 throw new InvalidOperationException("Password must be at least 6 characters");
+        //             exam.AccessPassword = BCrypt.Net.BCrypt.HashPassword(updateExamDTO.AccessPassword);
+        //         }
+
+        //         // Save changes
+        //         _context.Exams.Update(exam);
+        //         await _context.SaveChangesAsync();
+
+        //         _logger.LogInformation($"Exam {examId} updated by teacher {teacherId}");
+        //         return MapToExamResponseDTO(exam, exam.CreatedByUser?.FullName ?? "Unknown");
+        //     }
+        //     catch (ArgumentNullException ex)
+        //     {
+        //         _logger.LogError($"Validation error in UpdateExamAsync: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         _logger.LogWarning($"Invalid operation in UpdateExamAsync: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (UnauthorizedAccessException ex)
+        //     {
+        //         _logger.LogWarning($"Unauthorized access in UpdateExamAsync: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error updating exam {examId}: {ex.Message}");
+        //         throw;
+        //     }
+        // }
+
         public async Task<ExamResponseDTO?> UpdateExamAsync(int examId, int teacherId, UpdateExamDTO updateExamDTO)
         {
             try
             {
+                // Validate input
                 if (updateExamDTO == null)
                     throw new ArgumentNullException(nameof(updateExamDTO));
 
-                // ✅ Get exam
+                // Get exam with related data
                 var exam = await _context.Exams
                     .Include(e => e.CreatedByUser)
                     .FirstOrDefaultAsync(e => e.ExamID == examId);
@@ -216,102 +336,263 @@ namespace QuizPortalAPI.Services
                     return null;
                 }
 
-                // ✅ Verify ownership
+                // Verify ownership
                 if (exam.CreatedBy != teacherId)
                 {
                     _logger.LogWarning($"Teacher {teacherId} attempted to update exam {examId} they don't own");
                     throw new UnauthorizedAccessException("You can only update your own exams");
                 }
 
-                // ✅ Prevent updates if exam is active or ended
+                // Prevent updates if exam has already started (using CURRENT schedule)
                 if (DateTime.UtcNow >= exam.ScheduleStart)
                 {
-                    _logger.LogWarning($"Attempted to update exam {examId} that is active or has ended");
-                    throw new InvalidOperationException("Exam details can only be updated while the exam is upcoming. Once an exam starts, it cannot be modified.");
+                    _logger.LogWarning($"Attempted to update exam {examId} that has already started or ended");
+                    throw new InvalidOperationException(
+                        "Exam details can only be updated while the exam is upcoming. " +
+                        "Once an exam starts, it cannot be modified.");
                 }
 
-                // ✅ Update allowed fields
-                if (!string.IsNullOrWhiteSpace(updateExamDTO.Title))
+                var finalScheduleStart = updateExamDTO.ScheduleStart ?? exam.ScheduleStart;
+                var finalScheduleEnd = updateExamDTO.ScheduleEnd ?? exam.ScheduleEnd;
+                var finalDuration = updateExamDTO.DurationMinutes ?? exam.DurationMinutes;
+
+                // 1. Validate schedule times are provided together (if updating)
+                if (updateExamDTO.ScheduleStart.HasValue != updateExamDTO.ScheduleEnd.HasValue)
                 {
-                    if (updateExamDTO.Title.Length < 3 || updateExamDTO.Title.Length > 200)
-                        throw new InvalidOperationException("Title must be between 3 and 200 characters");
-                    exam.Title = updateExamDTO.Title;
+                    throw new InvalidOperationException(
+                        "Both schedule start and end times must be provided together. " +
+                        "You cannot update only one of them.");
                 }
 
-                if (updateExamDTO.Description != null)
-                    exam.Description = updateExamDTO.Description;
+                // 2. Ensure final schedule start is in the future
+                if (finalScheduleStart <= DateTime.UtcNow)
+                {
+                    throw new InvalidOperationException(
+                        $"Schedule start time must be in the future. " +
+                        $"Current time: {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC, " +
+                        $"Requested start: {finalScheduleStart:yyyy-MM-dd HH:mm} UTC");
+                }
 
-                if (updateExamDTO.BatchRemark != null)
-                    exam.BatchRemark = updateExamDTO.BatchRemark;
+                // 3. Add reasonable buffer - exam must be scheduled at least 1 hour in advance (recheck)
+                var minimumStartTime = DateTime.UtcNow.AddHours(1);
+                if (finalScheduleStart < minimumStartTime)
+                {
+                    throw new InvalidOperationException(
+                        $"Exam must be scheduled at least 1 hour in advance. " +
+                        $"Earliest allowed start time: {minimumStartTime:yyyy-MM-dd HH:mm} UTC");
+                }
 
+                // 4. Ensure end is after start
+                if (finalScheduleStart >= finalScheduleEnd)
+                {
+                    throw new InvalidOperationException(
+                        $"Schedule end time must be after start time. " +
+                        $"Start: {finalScheduleStart:yyyy-MM-dd HH:mm} UTC, " +
+                        $"End: {finalScheduleEnd:yyyy-MM-dd HH:mm} UTC");
+                }
+
+                // 5. Validate schedule window is reasonable
+                var scheduleWindowMinutes = (finalScheduleEnd - finalScheduleStart).TotalMinutes;
+
+                if (scheduleWindowMinutes < 10)
+                {
+                    throw new InvalidOperationException(
+                        $"Exam window must be at least 10 minutes. " +
+                        $"Current window: {scheduleWindowMinutes:F0} minutes");
+                }
+
+                if (scheduleWindowMinutes > 24 * 60) // More than 24 hours
+                {
+                    throw new InvalidOperationException(
+                        $"Exam window cannot exceed 24 hours. " +
+                        $"Current window: {scheduleWindowMinutes / 60:F1} hours");
+                }
+
+                // 6. Validate duration
                 if (updateExamDTO.DurationMinutes.HasValue)
                 {
-                    if (updateExamDTO.DurationMinutes <= 0)
+                    if (finalDuration <= 0)
+                    {
                         throw new InvalidOperationException("Duration must be greater than 0");
-                    exam.DurationMinutes = updateExamDTO.DurationMinutes.Value;
+                    }
+
+                    if (finalDuration < 5)
+                    {
+                        throw new InvalidOperationException(
+                            "Duration must be at least 5 minutes");
+                    }
                 }
 
-                if (updateExamDTO.ScheduleStart.HasValue && updateExamDTO.ScheduleEnd.HasValue)
+                // 7. Validate duration fits within schedule window
+                if (finalDuration > scheduleWindowMinutes)
                 {
-                    if (updateExamDTO.ScheduleStart >= updateExamDTO.ScheduleEnd)
-                        throw new InvalidOperationException("Schedule start must be before end");
-                    exam.ScheduleStart = updateExamDTO.ScheduleStart.Value;
-                    exam.ScheduleEnd = updateExamDTO.ScheduleEnd.Value;
-                }
-                else if (updateExamDTO.ScheduleStart.HasValue || updateExamDTO.ScheduleEnd.HasValue)
-                {
-                    throw new InvalidOperationException("Both schedule start and end times must be provided together");
-                }
-
-                // ✅ Validate duration doesn't exceed schedule window (after updates)
-                var scheduleWindowMinutes = (exam.ScheduleEnd - exam.ScheduleStart).TotalMinutes;
-                if (exam.DurationMinutes > scheduleWindowMinutes)
                     throw new InvalidOperationException(
-                        $"Exam duration ({exam.DurationMinutes} minutes) cannot exceed the time window between start and end times ({scheduleWindowMinutes:F0} minutes)");
+                        $"Exam duration ({finalDuration} minutes) cannot exceed the time window " +
+                        $"between start and end times ({scheduleWindowMinutes:F0} minutes). " +
+                        $"Please either reduce the duration or extend the schedule window.");
+                }
 
+                // 8. Validate title if provided
+                if (!string.IsNullOrWhiteSpace(updateExamDTO.Title))
+                {
+                    if (updateExamDTO.Title.Length < 3)
+                    {
+                        throw new InvalidOperationException(
+                            "Title must be at least 3 characters long");
+                    }
+
+                    if (updateExamDTO.Title.Length > 200)
+                    {
+                        throw new InvalidOperationException(
+                            "Title cannot exceed 200 characters");
+                    }
+                }
+
+                // 9. Validate passing percentage if provided
                 if (updateExamDTO.PassingPercentage.HasValue)
                 {
                     if (updateExamDTO.PassingPercentage < 0 || updateExamDTO.PassingPercentage > 100)
-                        throw new InvalidOperationException("Passing percentage must be between 0 and 100");
-                    exam.PassingPercentage = updateExamDTO.PassingPercentage.Value;
+                    {
+                        throw new InvalidOperationException(
+                            "Passing percentage must be between 0 and 100");
+                    }
                 }
 
-                if (updateExamDTO.HasNegativeMarking.HasValue)
-                    exam.HasNegativeMarking = updateExamDTO.HasNegativeMarking.Value;
-
-                // ✅ Update password if provided
+                // 10. Validate password if provided
                 if (!string.IsNullOrWhiteSpace(updateExamDTO.AccessPassword))
                 {
                     if (updateExamDTO.AccessPassword.Length < 6)
-                        throw new InvalidOperationException("Password must be at least 6 characters");
+                    {
+                        throw new InvalidOperationException(
+                            "Password must be at least 6 characters long");
+                    }
+
+                    if (updateExamDTO.AccessPassword.Length > 100)
+                    {
+                        throw new InvalidOperationException(
+                            "Password cannot exceed 100 characters");
+                    }
+                }
+
+                // Track what changed for logging
+                var changes = new List<string>();
+
+                // Update title
+                if (!string.IsNullOrWhiteSpace(updateExamDTO.Title) && exam.Title != updateExamDTO.Title)
+                {
+                    changes.Add($"Title: '{exam.Title}' → '{updateExamDTO.Title}'");
+                    exam.Title = updateExamDTO.Title;
+                }
+
+                // Update description (allow clearing by setting to empty string)
+                if (updateExamDTO.Description != null && exam.Description != updateExamDTO.Description)
+                {
+                    var oldDesc = string.IsNullOrEmpty(exam.Description) ? "[empty]" : exam.Description;
+                    var newDesc = string.IsNullOrEmpty(updateExamDTO.Description) ? "[empty]" : updateExamDTO.Description;
+                    changes.Add($"Description: '{oldDesc}' → '{newDesc}'");
+                    exam.Description = string.IsNullOrWhiteSpace(updateExamDTO.Description)
+                        ? null
+                        : updateExamDTO.Description;
+                }
+
+                // Update batch remark (allow clearing by setting to empty string)
+                if (updateExamDTO.BatchRemark != null && exam.BatchRemark != updateExamDTO.BatchRemark)
+                {
+                    var oldRemark = string.IsNullOrEmpty(exam.BatchRemark) ? "[empty]" : exam.BatchRemark;
+                    var newRemark = string.IsNullOrEmpty(updateExamDTO.BatchRemark) ? "[empty]" : updateExamDTO.BatchRemark;
+                    changes.Add($"BatchRemark: '{oldRemark}' → '{newRemark}'");
+                    exam.BatchRemark = string.IsNullOrWhiteSpace(updateExamDTO.BatchRemark)
+                        ? null
+                        : updateExamDTO.BatchRemark;
+                }
+
+                // Update duration
+                if (updateExamDTO.DurationMinutes.HasValue && exam.DurationMinutes != finalDuration)
+                {
+                    changes.Add($"Duration: {exam.DurationMinutes} min → {finalDuration} min");
+                    exam.DurationMinutes = finalDuration;
+                }
+
+                // Update schedule
+                if (updateExamDTO.ScheduleStart.HasValue && updateExamDTO.ScheduleEnd.HasValue)
+                {
+                    if (exam.ScheduleStart != finalScheduleStart || exam.ScheduleEnd != finalScheduleEnd)
+                    {
+                        changes.Add(
+                            $"Schedule: [{exam.ScheduleStart:yyyy-MM-dd HH:mm} to {exam.ScheduleEnd:yyyy-MM-dd HH:mm}] → " +
+                            $"[{finalScheduleStart:yyyy-MM-dd HH:mm} to {finalScheduleEnd:yyyy-MM-dd HH:mm}]");
+
+                        exam.ScheduleStart = finalScheduleStart;
+                        exam.ScheduleEnd = finalScheduleEnd;
+                    }
+                }
+
+                // Update passing percentage
+                if (updateExamDTO.PassingPercentage.HasValue &&
+                    exam.PassingPercentage != updateExamDTO.PassingPercentage.Value)
+                {
+                    changes.Add($"PassingPercentage: {exam.PassingPercentage}% → {updateExamDTO.PassingPercentage}%");
+                    exam.PassingPercentage = updateExamDTO.PassingPercentage.Value;
+                }
+
+                // Update negative marking
+                if (updateExamDTO.HasNegativeMarking.HasValue &&
+                    exam.HasNegativeMarking != updateExamDTO.HasNegativeMarking.Value)
+                {
+                    changes.Add($"NegativeMarking: {exam.HasNegativeMarking} → {updateExamDTO.HasNegativeMarking.Value}");
+                    exam.HasNegativeMarking = updateExamDTO.HasNegativeMarking.Value;
+                }
+
+                // Update password (hash it)
+                if (!string.IsNullOrWhiteSpace(updateExamDTO.AccessPassword))
+                {
+                    changes.Add("Password: Updated");
                     exam.AccessPassword = BCrypt.Net.BCrypt.HashPassword(updateExamDTO.AccessPassword);
                 }
 
-                // ✅ Save changes
+                // Check if any changes were made
+                if (changes.Count == 0)
+                {
+                    _logger.LogInformation($"No changes detected for exam {examId} by teacher {teacherId}");
+                    return MapToExamResponseDTO(exam, exam.CreatedByUser?.FullName ?? "Unknown");
+                }
+
+                // Update timestamp
+                // exam.UpdatedAt = DateTime.UtcNow;
+
+                // Save changes to database
                 _context.Exams.Update(exam);
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation($"Exam {examId} updated by teacher {teacherId}");
+                // Log successful update with details
+                _logger.LogInformation(
+                    $"Exam {examId} updated by teacher {teacherId}. Changes: {string.Join("; ", changes)}");
+
                 return MapToExamResponseDTO(exam, exam.CreatedByUser?.FullName ?? "Unknown");
             }
             catch (ArgumentNullException ex)
             {
-                _logger.LogError($"Validation error in UpdateExamAsync: {ex.Message}");
+                _logger.LogError($"Validation error in UpdateExamAsync for exam {examId}: {ex.Message}");
                 throw;
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning($"Invalid operation in UpdateExamAsync: {ex.Message}");
+                _logger.LogWarning($"Invalid operation in UpdateExamAsync for exam {examId}: {ex.Message}");
                 throw;
             }
             catch (UnauthorizedAccessException ex)
             {
-                _logger.LogWarning($"Unauthorized access in UpdateExamAsync: {ex.Message}");
+                _logger.LogWarning($"Unauthorized access in UpdateExamAsync for exam {examId}: {ex.Message}");
                 throw;
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, $"Database error updating exam {examId}");
+                throw new InvalidOperationException("Failed to save exam changes to database. Please try again.", ex);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error updating exam {examId}: {ex.Message}");
+                _logger.LogError(ex, $"Unexpected error updating exam {examId}");
                 throw;
             }
         }
@@ -330,14 +611,14 @@ namespace QuizPortalAPI.Services
                     return false;
                 }
 
-                // ✅ Verify ownership
+                // Verify ownership
                 if (exam.CreatedBy != teacherId)
                 {
                     _logger.LogWarning($"Teacher {teacherId} attempted to delete exam {examId} they don't own");
                     throw new UnauthorizedAccessException("You can only delete your own exams");
                 }
 
-                // ✅ Prevent deletion if exam is active or ended
+                // Prevent deletion if exam is active or ended
                 if (DateTime.UtcNow >= exam.ScheduleStart)
                 {
                     _logger.LogWarning($"Attempted to delete exam {examId} that is active or has ended");
@@ -377,7 +658,7 @@ namespace QuizPortalAPI.Services
                 if (string.IsNullOrWhiteSpace(accessCode) || string.IsNullOrWhiteSpace(accessPassword))
                     throw new ArgumentException("Access code and password are required");
 
-                // ✅ Find exam by access code
+                // Find exam by access code
                 var exam = await _context.Exams
                     .Include(e => e.CreatedByUser)
                     .Include(e => e.Questions)  // Include questions for TotalMarks calculation
@@ -393,7 +674,7 @@ namespace QuizPortalAPI.Services
                     };
                 }
 
-                // ✅ Verify password
+                // Verify password
                 if (!BCrypt.Net.BCrypt.Verify(accessPassword, exam.AccessPassword))
                 {
                     _logger.LogWarning($"Invalid password for exam {exam.ExamID}");
@@ -406,7 +687,7 @@ namespace QuizPortalAPI.Services
 
                 var now = DateTime.UtcNow;
 
-                // ✅ Check if exam schedule is valid
+                // Check if exam schedule is valid
                 if (now < exam.ScheduleStart)
                 {
                     _logger.LogInformation($"Exam {exam.ExamID} access attempted before start time");
@@ -441,7 +722,7 @@ namespace QuizPortalAPI.Services
                     };
                 }
 
-                // ✅ Exam is active and accessible
+                // Exam is active and accessible
                 _logger.LogInformation($"Student granted access to exam {exam.ExamID}");
                 return new ExamAccessResponseDTO
                 {
@@ -543,6 +824,7 @@ namespace QuizPortalAPI.Services
                 HasNegativeMarking = exam.HasNegativeMarking,
                 AccessCode = exam.AccessCode,
                 CreatedAt = exam.CreatedAt,
+                // UpdatedAt = exam.UpdatedAt,
                 IsActive = isActive,
                 TimeUntilStart = exam.ScheduleStart > now ? exam.ScheduleStart - now : null,
                 TimeRemaining = isActive ? exam.ScheduleEnd - now : null
@@ -569,7 +851,7 @@ namespace QuizPortalAPI.Services
 
                 // Map questions without revealing correct answers
                 List<object> questions = new();
-                
+
                 if (exam.Questions != null)
                 {
                     foreach (var q in exam.Questions)
@@ -617,7 +899,7 @@ namespace QuizPortalAPI.Services
         {
             var now = DateTime.UtcNow;
             var isActive = now >= exam.ScheduleStart && now <= exam.ScheduleEnd;
-            
+
             string status = "Upcoming";
             if (now > exam.ScheduleEnd)
                 status = "Ended";

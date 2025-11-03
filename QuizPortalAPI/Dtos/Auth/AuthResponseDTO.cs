@@ -1,14 +1,13 @@
 namespace QuizPortalAPI.DTOs.Auth
 {
     /// <summary>
-    /// DTO for authentication response containing JWT tokens
+    /// DTO for authentication response containing JWT access token
     /// </summary>
     public class AuthResponseDTO
     {
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
         public string? AccessToken { get; set; }
-        public string? RefreshToken { get; set; }
         public DateTime? ExpiresAt { get; set; }
         public UserInfoDTO? User { get; set; }
     }

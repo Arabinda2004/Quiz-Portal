@@ -26,7 +26,7 @@ namespace QuizPortalAPI.Services
                 if (createResponseDTO == null)
                     throw new ArgumentNullException(nameof(createResponseDTO));
 
-                // ✅ Validate exam exists and is active
+                // Validate exam exists and is active
                 var exam = await _context.Exams.FindAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
@@ -35,14 +35,14 @@ namespace QuizPortalAPI.Services
                 if (now < exam.ScheduleStart || now > exam.ScheduleEnd)
                     throw new InvalidOperationException("Exam is not active");
 
-                // ✅ Check if exam has been published - prevent new submissions
+                // Check if exam has been published - prevent new submissions
                 var publication = await _context.ExamPublications
                     .FirstOrDefaultAsync(ep => ep.ExamID == examId && ep.Status == "Published");
 
                 if (publication != null)
                     throw new InvalidOperationException("This exam has been published and no further submissions are allowed");
 
-                // ✅ Validate question exists
+                // Validate question exists
                 var question = await _context.Questions.FindAsync(createResponseDTO.QuestionID);
                 if (question == null)
                     throw new InvalidOperationException("Question not found");
@@ -50,12 +50,12 @@ namespace QuizPortalAPI.Services
                 if (question.ExamID != examId)
                     throw new InvalidOperationException("Question does not belong to this exam");
 
-                // ✅ Validate student exists
+                // Validate student exists
                 var student = await _context.Users.FindAsync(studentId);
                 if (student == null)
                     throw new InvalidOperationException("Student not found");
 
-                // ✅ Check if response already exists
+                // Check if response already exists
                 var existingResponse = await _context.StudentResponses
                     .FirstOrDefaultAsync(sr => sr.ExamID == examId && 
                                               sr.QuestionID == createResponseDTO.QuestionID && 
@@ -65,12 +65,12 @@ namespace QuizPortalAPI.Services
 
                 if (existingResponse != null)
                 {
-                    // ✅ Update existing response
+                    // Update existing response
                     response = existingResponse;
                     response.AnswerText = createResponseDTO.AnswerText;
                     response.SubmittedAt = DateTime.UtcNow;
 
-                    // ✅ Re-grade MCQ responses on update
+                    // Re-grade MCQ responses on update
                     if (question.QuestionType == QuestionType.MCQ)
                     {
                         var correctOption = await _context.QuestionOptions
@@ -92,7 +92,7 @@ namespace QuizPortalAPI.Services
                 }
                 else
                 {
-                    // ✅ Create new response
+                    // Create new response
                     response = new StudentResponse
                     {
                         ExamID = examId,
@@ -294,7 +294,7 @@ namespace QuizPortalAPI.Services
                 var now = DateTime.UtcNow;
                 bool isExamActive = now >= exam.ScheduleStart && now <= exam.ScheduleEnd;
                 
-                // ✅ Check if exam is published - if published, students cannot submit new answers
+                // Check if exam is published - if published, students cannot submit new answers
                 var isExamPublished = await _context.ExamPublications
                     .AnyAsync(ep => ep.ExamID == examId && ep.Status == "Published");
 

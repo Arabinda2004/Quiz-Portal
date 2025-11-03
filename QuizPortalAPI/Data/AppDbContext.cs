@@ -8,7 +8,6 @@ namespace QuizPortalAPI.Data
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         public DbSet<User> Users { get; set; }
-        public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<Exam> Exams { get; set; }
         public DbSet<Question> Questions { get; set; }
@@ -16,7 +15,7 @@ namespace QuizPortalAPI.Data
         public DbSet<StudentResponse> StudentResponses { get; set; }
         public DbSet<Result> Results { get; set; }
         public DbSet<GradingRecord> GradingRecords { get; set; }
-        public DbSet<ExamPublication> ExamPublications { get; set; }
+        public DbSet<ExamPublication> ExamPublications { get; set;}
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -27,13 +26,6 @@ namespace QuizPortalAPI.Data
                 .HasIndex(u => u.Email)
                 .IsUnique()
                 .HasDatabaseName("IX_User_Email");
-
-            // RefreshToken configuration
-            modelBuilder.Entity<RefreshToken>()
-                .HasOne(rt => rt.User)
-                .WithMany()
-                .HasForeignKey(rt => rt.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
 
             // AuditLog configuration
             modelBuilder.Entity<AuditLog>()

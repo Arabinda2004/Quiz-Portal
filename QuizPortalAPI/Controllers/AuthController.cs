@@ -48,7 +48,7 @@ namespace QuizPortalAPI.Controllers
                 }
 
                 // Set JWT token in HttpOnly cookie
-                SetAuthCookies(result.AccessToken, result.RefreshToken);
+                SetAuthCookies(result.AccessToken);
 
                 _logger.LogInformation($"New user registered: {registerDTO.Email}");
                 return Ok(result);
@@ -94,7 +94,7 @@ namespace QuizPortalAPI.Controllers
                 }
 
                 // Set JWT token in HttpOnly cookie
-                SetAuthCookies(result.AccessToken, result.RefreshToken);
+                SetAuthCookies(result.AccessToken);
 
                 _logger.LogInformation($"User logged in successfully: {loginDTO.Email}");
                 return Ok(result);
@@ -111,62 +111,6 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        // /// <summary>
-        // /// POST: api/auth/refresh
-        // /// Refresh access token using refresh token
-        // /// </summary>
-        // [HttpPost("refresh")]
-        // [AllowAnonymous]
-        // [ProducesResponseType(StatusCodes.Status200OK)]
-        // [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        // [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        // [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        // public async Task<ActionResult<AuthResponseDTO>> RefreshToken([FromBody] RefreshTokenDTO refreshTokenDTO)
-        // {
-        //     try
-        //     {
-        //         if (!ModelState.IsValid)
-        //         {
-        //             _logger.LogWarning("Invalid refresh token request");
-        //             return BadRequest(ModelState);
-        //         }
-
-        //         if (string.IsNullOrEmpty(refreshTokenDTO.RefreshToken))
-        //         {
-        //             _logger.LogWarning("Refresh token is empty");
-        //             return BadRequest(new AuthResponseDTO
-        //             {
-        //                 Success = false,
-        //                 Message = "Refresh token is required"
-        //             });
-        //         }
-
-        //         var result = await _authService.RefreshTokenAsync(refreshTokenDTO.RefreshToken);
-
-        //         if (!result.Success)
-        //         {
-        //             _logger.LogWarning("Refresh token failed");
-        //             return Unauthorized(result);
-        //         }
-
-        //         // Set new JWT tokens in HttpOnly cookies
-        //         SetAuthCookies(result.AccessToken, result.RefreshToken);
-
-        //         _logger.LogInformation("Token refreshed successfully");
-        //         return Ok(result);
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         _logger.LogError($"Error during token refresh: {ex.Message}");
-        //         return StatusCode(StatusCodes.Status500InternalServerError,
-        //             new AuthResponseDTO
-        //             {
-        //                 Success = false,
-        //                 Message = "An error occurred during token refresh"
-        //             });
-        //     }
-        // }
-
         /// <summary>
         /// POST: api/auth/logout
         /// Clear JWT cookies
@@ -179,9 +123,8 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // Clear cookies
+                // Clear cookie
                 Response.Cookies.Delete("accessToken");
-                Response.Cookies.Delete("refreshToken");
 
                 _logger.LogInformation("User logged out successfully");
                 return Ok(new { success = true, message = "Logged out successfully" });
@@ -195,11 +138,11 @@ namespace QuizPortalAPI.Controllers
         }
 
         /// <summary>
-        /// Helper method to set JWT tokens in HttpOnly cookies
+        /// Helper method to set JWT access token in HttpOnly cookie
         /// </summary>
-        private void SetAuthCookies(string? accessToken, string? refreshToken)
+        private void SetAuthCookies(string? accessToken)
         {
-            if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(refreshToken))
+            if (string.IsNullOrEmpty(accessToken))
                 return;
 
             var accessTokenCookieOptions = new CookieOptions
@@ -210,16 +153,7 @@ namespace QuizPortalAPI.Controllers
                 Expires = DateTimeOffset.UtcNow.AddMinutes(60)  // 60 minutes
             };
 
-            var refreshTokenCookieOptions = new CookieOptions
-            {
-                HttpOnly = true,  // Not accessible via JavaScript
-                Secure = !HttpContext.Request.IsHttps ? false : true,  // HTTPS only in production
-                SameSite = SameSiteMode.Strict,  // CSRF protection
-                Expires = DateTimeOffset.UtcNow.AddDays(7)  // 7 days
-            };
-
             Response.Cookies.Append("accessToken", accessToken, accessTokenCookieOptions);
-            Response.Cookies.Append("refreshToken", refreshToken, refreshTokenCookieOptions);
         }
 
         /// <summary>
@@ -228,7 +162,6 @@ namespace QuizPortalAPI.Controllers
         private void ClearAuthCookies()
         {
             Response.Cookies.Delete("accessToken");
-            Response.Cookies.Delete("refreshToken");
         }
     }
 }

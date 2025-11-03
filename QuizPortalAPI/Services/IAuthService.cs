@@ -10,7 +10,7 @@ namespace QuizPortalAPI.Services
     {
         /// <summary>
         /// Authenticate user with email and password
-        /// Returns JWT access token and refresh token
+        /// Returns JWT access token
         /// </summary>
         Task<AuthResponseDTO> LoginAsync(LoginDTO loginDTO);
 
@@ -20,19 +20,13 @@ namespace QuizPortalAPI.Services
         Task<AuthResponseDTO> RegisterAsync(RegisterDTO registerDTO);
 
         /// <summary>
-        /// Refresh access token using refresh token
-        /// Issues new access token and optionally new refresh token
-        /// </summary>
-        Task<AuthResponseDTO> RefreshTokenAsync(string refreshToken);
-
-        /// <summary>
         /// Change user password
-        /// Requires current password verification and invalidates all refresh tokens
+        /// Requires current password verification
         /// </summary>
         Task<AuthResponseDTO> ChangePasswordAsync(int userId, ChangePasswordDTO changePasswordDTO);
 
         /// <summary>
-        /// Logout user by revoking refresh token
+        /// Logout user
         /// </summary>
         Task<bool> LogoutAsync(int userId);
 

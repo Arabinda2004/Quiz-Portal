@@ -23,14 +23,14 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                // ✅ Validate input
+                // Validate input
                 if (createQuestionDTO == null)
                     throw new ArgumentNullException(nameof(createQuestionDTO));
 
                 if (string.IsNullOrWhiteSpace(createQuestionDTO.QuestionText))
                     throw new InvalidOperationException("Question text is required");
 
-                // ✅ Verify exam exists and user is owner
+                // Verify exam exists and user is owner
                 var exam = await _context.Exams.FindAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
@@ -41,7 +41,7 @@ namespace QuizPortalAPI.Services
                     throw new UnauthorizedAccessException("You can only add questions to your own exams");
                 }
 
-                // ✅ Check if exam has started (can only add questions to upcoming exams)
+                // Check if exam has started (can only add questions to upcoming exams)
                 var now = DateTime.UtcNow;
                 if (now >= exam.ScheduleStart)
                 {
@@ -49,7 +49,7 @@ namespace QuizPortalAPI.Services
                     throw new InvalidOperationException("Questions can only be added to upcoming exams. Once an exam starts, no new questions can be added.");
                 }
 
-                // ✅ Validate marks
+                // Validate marks
                 if (createQuestionDTO.Marks <= 0)
                     throw new InvalidOperationException("Marks must be greater than 0");
 
@@ -58,13 +58,13 @@ namespace QuizPortalAPI.Services
 
                 // Note: No validation for total marks limit since TotalMarks is now dynamically calculated from questions
 
-                // ✅ Validate options for MCQ
+                // Validate options for MCQ
                 if (createQuestionDTO.QuestionType == QuestionType.MCQ)
                 {
                     if (createQuestionDTO.Options == null || createQuestionDTO.Options.Count == 0)
                         throw new InvalidOperationException("MCQ questions must have at least one option");
 
-                    // ✅ NEW: MCQ must have exactly 4 options
+                    // NEW: MCQ must have exactly 4 options
                     if (createQuestionDTO.Options.Count != 4)
                         throw new InvalidOperationException("MCQ questions must have exactly 4 options");
 
@@ -77,7 +77,7 @@ namespace QuizPortalAPI.Services
                     throw new InvalidOperationException($"Only MCQ questions can have options");
                 }
 
-                // ✅ Create question entity
+                // Create question entity
                 var question = new Question
                 {
                     ExamID = examId,
@@ -89,7 +89,7 @@ namespace QuizPortalAPI.Services
                     CreatedAt = DateTime.UtcNow
                 };
 
-                // ✅ Add options if MCQ
+                // Add options if MCQ
                 if (createQuestionDTO.QuestionType == QuestionType.MCQ && createQuestionDTO.Options != null)
                 {
                     question.Options = createQuestionDTO.Options.Select(opt => new QuestionOption
@@ -187,7 +187,7 @@ namespace QuizPortalAPI.Services
                 if (updateQuestionDTO == null)
                     throw new ArgumentNullException(nameof(updateQuestionDTO));
 
-                // ✅ Get question with options
+                // Get question with options
                 var question = await _context.Questions
                     .Include(q => q.Options)
                     .FirstOrDefaultAsync(q => q.QuestionID == questionId);
@@ -198,14 +198,14 @@ namespace QuizPortalAPI.Services
                     return null;
                 }
 
-                // ✅ Verify ownership
+                // Verify ownership
                 if (question.CreatedBy != teacherId)
                 {
                     _logger.LogWarning($"Teacher {teacherId} attempted to update question {questionId} they don't own");
                     throw new UnauthorizedAccessException("You can only update your own questions");
                 }
 
-                // ✅ Check if exam has started (can only update questions in upcoming exams)
+                // Check if exam has started (can only update questions in upcoming exams)
                 var exam = await _context.Exams.FindAsync(question.ExamID);
                 if (exam != null)
                 {
@@ -217,7 +217,7 @@ namespace QuizPortalAPI.Services
                     }
                 }
 
-                // ✅ Update text if provided
+                // Update text if provided
                 if (!string.IsNullOrWhiteSpace(updateQuestionDTO.QuestionText))
                 {
                     if (updateQuestionDTO.QuestionText.Length < 10 || updateQuestionDTO.QuestionText.Length > 5000)
@@ -225,7 +225,7 @@ namespace QuizPortalAPI.Services
                     question.QuestionText = updateQuestionDTO.QuestionText;
                 }
 
-                // ✅ Update marks if provided
+                // Update marks if provided
                 if (updateQuestionDTO.Marks.HasValue)
                 {
                     if (updateQuestionDTO.Marks <= 0)
@@ -236,7 +236,7 @@ namespace QuizPortalAPI.Services
                     question.Marks = updateQuestionDTO.Marks.Value;
                 }
 
-                // ✅ Update negative marks if provided
+                // Update negative marks if provided
                 if (updateQuestionDTO.NegativeMarks.HasValue)
                 {
                     if (updateQuestionDTO.NegativeMarks < 0)
@@ -244,13 +244,13 @@ namespace QuizPortalAPI.Services
                     question.NegativeMarks = updateQuestionDTO.NegativeMarks.Value;
                 }
 
-                // ✅ Update options if provided
+                // Update options if provided
                 if (updateQuestionDTO.Options != null && updateQuestionDTO.Options.Count > 0)
                 {
                     if (question.QuestionType != QuestionType.MCQ)
                         throw new InvalidOperationException("Only MCQ questions can have options");
 
-                    // ✅ FIX: Null-coalesce Options to empty list
+                    // FIX: Null-coalesce Options to empty list
                     var currentOptions = question.Options ?? new List<QuestionOption>();
 
                     // Remove options that are not in the update list
@@ -284,7 +284,7 @@ namespace QuizPortalAPI.Services
                     // Add new options
                     foreach (var newOption in updateQuestionDTO.Options.Where(o => !o.OptionID.HasValue))
                     {
-                        // ✅ FIX: Initialize Options list if null
+                        // FIX: Initialize Options list if null
                         if (question.Options == null)
                             question.Options = new List<QuestionOption>();
 
@@ -296,7 +296,7 @@ namespace QuizPortalAPI.Services
                         });
                     }
 
-                    // ✅ NEW: Validate exactly 4 options for MCQ
+                    // NEW: Validate exactly 4 options for MCQ
                     if (question.QuestionType == QuestionType.MCQ)
                     {
                         var totalOptions = question.Options?.Count ?? 0;
@@ -310,7 +310,7 @@ namespace QuizPortalAPI.Services
                         throw new InvalidOperationException("MCQ questions must have exactly 1 correct option");
                 }
 
-                // ✅ Save changes
+                // Save changes
                 _context.Questions.Update(question);
                 await _context.SaveChangesAsync();
 
@@ -353,14 +353,14 @@ namespace QuizPortalAPI.Services
                     return false;
                 }
 
-                // ✅ Verify ownership
+                // Verify ownership
                 if (question.CreatedBy != teacherId)
                 {
                     _logger.LogWarning($"Teacher {teacherId} attempted to delete question {questionId} they don't own");
                     throw new UnauthorizedAccessException("You can only delete your own questions");
                 }
 
-                // ✅ Check if exam has started (can only delete questions from upcoming exams)
+                // Check if exam has started (can only delete questions from upcoming exams)
                 var exam = await _context.Exams.FindAsync(question.ExamID);
                 if (exam != null)
                 {

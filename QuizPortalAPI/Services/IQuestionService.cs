@@ -4,7 +4,6 @@ namespace QuizPortalAPI.Services
 {
     public interface IQuestionService
     {
-        // Question CRUD operations
         Task<QuestionResponseDTO> CreateQuestionAsync(int examId, int teacherId, CreateQuestionDTO createQuestionDTO);
 
         Task<QuestionResponseDTO?> GetQuestionByIdAsync(int questionId);

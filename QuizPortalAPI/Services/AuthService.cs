@@ -56,12 +56,8 @@ namespace QuizPortalAPI.Services
                     };
                 }
 
-                // Revoke old refresh tokens
-                await RevokeAllRefreshTokensAsync(user.UserID);
-
-                // Generate tokens
+                // Generate access token
                 var accessToken = GenerateAccessToken(user);
-                var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.UserID);
 
                 var userInfo = new UserInfoDTO
                 {
@@ -80,7 +76,6 @@ namespace QuizPortalAPI.Services
                     Success = true,
                     Message = "Login successful",
                     AccessToken = accessToken,
-                    RefreshToken = refreshToken,
                     ExpiresAt = DateTime.UtcNow.AddMinutes(
                         int.Parse(_configuration["JwtSettings:ExpirationMinutes"] ?? "15")),
                     User = userInfo
@@ -140,9 +135,8 @@ namespace QuizPortalAPI.Services
 
                 _logger.LogInformation($"New user registered as {userRole}: {user.Email}");
 
-                // Generate tokens for auto-login after registration
+                // Generate access token for auto-login after registration
                 var accessToken = GenerateAccessToken(user);
-                var refreshToken = await GenerateAndStoreRefreshTokenAsync(user.UserID);
 
                 var userInfo = new UserInfoDTO
                 {
@@ -159,7 +153,6 @@ namespace QuizPortalAPI.Services
                     Success = true,
                     Message = "Registration successful",
                     AccessToken = accessToken,
-                    RefreshToken = refreshToken,
                     ExpiresAt = DateTime.UtcNow.AddMinutes(
                         int.Parse(_configuration["JwtSettings:ExpirationMinutes"] ?? "60")),
                     User = userInfo
@@ -172,80 +165,6 @@ namespace QuizPortalAPI.Services
                 {
                     Success = false,
                     Message = "An error occurred during registration"
-                };
-            }
-        }
-
-        public async Task<AuthResponseDTO> RefreshTokenAsync(string refreshTokenString)
-        {
-            try
-            {
-                // Find refresh token in database
-                var refreshToken = await _context.RefreshTokens
-                    .Include(rt => rt.User)
-                    .FirstOrDefaultAsync(rt => rt.Token == refreshTokenString);
-
-                if (refreshToken == null || !refreshToken.IsValid)
-                {
-                    _logger.LogWarning("Invalid refresh token attempt");
-                    return new AuthResponseDTO
-                    {
-                        Success = false,
-                        Message = "Invalid or expired refresh token"
-                    };
-                }
-
-                var user = refreshToken.User;
-                if (user == null)
-                {
-                    _logger.LogWarning("User not found for refresh token");
-                    return new AuthResponseDTO
-                    {
-                        Success = false,
-                        Message = "User not found"
-                    };
-                }
-
-                // Generate new access token
-                var accessToken = GenerateAccessToken(user);
-
-                // Optionally generate new refresh token (rotate refresh tokens)
-                refreshToken.RevokedAt = DateTime.UtcNow;
-                _context.RefreshTokens.Update(refreshToken);
-
-                var newRefreshToken = await GenerateAndStoreRefreshTokenAsync(user.UserID);
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation($"Token refreshed for user: {user.Email}");
-
-                var userInfo = new UserInfoDTO
-                {
-                    UserID = user.UserID,
-                    FullName = user.FullName,
-                    Email = user.Email,
-                    Role = user.Role.ToString(),
-                    IsDefaultPassword = user.IsDefaultPassword,
-                    CreatedAt = user.CreatedAt
-                };
-
-                return new AuthResponseDTO
-                {
-                    Success = true,
-                    Message = "Token refreshed successfully",
-                    AccessToken = accessToken,
-                    RefreshToken = newRefreshToken,
-                    ExpiresAt = DateTime.UtcNow.AddMinutes(
-                        int.Parse(_configuration["JwtSettings:ExpirationMinutes"] ?? "15")),
-                    User = userInfo
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error during token refresh: {ex.Message}");
-                return new AuthResponseDTO
-                {
-                    Success = false,
-                    Message = "An error occurred during token refresh"
                 };
             }
         }
@@ -281,10 +200,6 @@ namespace QuizPortalAPI.Services
                 user.IsDefaultPassword = false;
 
                 _context.Users.Update(user);
-
-                // Revoke all refresh tokens (user must login again)
-                await RevokeAllRefreshTokensAsync(userId);
-
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation($"Password changed for user: {user.Email}");
@@ -306,18 +221,17 @@ namespace QuizPortalAPI.Services
             }
         }
 
-        public async Task<bool> LogoutAsync(int userId)
+        public Task<bool> LogoutAsync(int userId)
         {
             try
             {
-                await RevokeAllRefreshTokensAsync(userId);
                 _logger.LogInformation($"User logged out: {userId}");
-                return true;
+                return Task.FromResult(true);
             }
             catch (Exception ex)
             {
                 _logger.LogError($"Error during logout: {ex.Message}");
-                return false;
+                return Task.FromResult(false);
             }
         }
 
@@ -410,52 +324,6 @@ namespace QuizPortalAPI.Services
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
-        }
-
-        private async Task<string> GenerateAndStoreRefreshTokenAsync(int userId)
-        {
-            var refreshToken = new RefreshToken
-            {
-                UserId = userId,
-                Token = GenerateRandomToken(),
-                ExpiresAt = DateTime.UtcNow.AddDays(
-                    int.Parse(_configuration["JwtSettings:RefreshTokenExpirationDays"] ?? "7")),
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.RefreshTokens.Add(refreshToken);
-            await _context.SaveChangesAsync();
-
-            return refreshToken.Token;
-        }
-
-        private async Task RevokeAllRefreshTokensAsync(int userId)
-        {
-            var tokens = await _context.RefreshTokens
-                .Where(rt => rt.UserId == userId && rt.RevokedAt == null)
-                .ToListAsync();
-
-            foreach (var token in tokens)
-            {
-                token.RevokedAt = DateTime.UtcNow;
-            }
-
-            if (tokens.Count > 0)
-            {
-                _context.RefreshTokens.UpdateRange(tokens);
-                await _context.SaveChangesAsync();
-            }
-        }
-
-      
-        private string GenerateRandomToken()
-        {
-            var randomNumber = new byte[32];
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(randomNumber);
-                return Convert.ToBase64String(randomNumber);
-            }
         }
     }
 }

@@ -7,9 +7,9 @@ namespace QuizPortalAPI.Models
 {
     public enum QuestionType
     {
-        MCQ = 0,          // Multiple Choice Question
-        SAQ = 1,          // Short Answer Question
-        Subjective = 2    // Subjective/Essay Question
+        MCQ = 0,     
+        SAQ = 1,   
+        Subjective = 2   
     }
 
     [Index(nameof(ExamID))]

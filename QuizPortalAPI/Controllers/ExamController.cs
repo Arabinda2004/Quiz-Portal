@@ -24,12 +24,10 @@ namespace QuizPortalAPI.Controllers
             _context = context;
         }
 
-        /// <summary>
-        /// Get logged-in user's ID from JWT token
-        /// </summary>
+        // Get logged-in user's ID from JWT token
         private int GetLoggedInUserId()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value; // User represents the currently authenticated user
             if (int.TryParse(userIdClaim, out var userId))
                 return userId;
             return 0;
@@ -50,7 +48,7 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // ✅ Validate input
+                // Validate input
                 if (createExamDTO == null)
                     return BadRequest(new { message = "Invalid request data" });
 
@@ -61,7 +59,7 @@ namespace QuizPortalAPI.Controllers
                 if (teacherId == 0)
                     return Unauthorized(new { message = "Invalid user ID" });
 
-                // ✅ Create exam
+                // Create exam
                 var createdExam = await _examService.CreateExamAsync(teacherId, createExamDTO);
 
                 _logger.LogInformation($"Exam created successfully by teacher {teacherId}");
@@ -113,12 +111,12 @@ namespace QuizPortalAPI.Controllers
                 if (teacherId == 0)
                     return Unauthorized(new { message = "Invalid user ID" });
 
-                // ✅ Get exam
+                // Get exam
                 var exam = await _examService.GetExamByIdAsync(id);
                 if (exam == null)
                     return NotFound(new { message = "Exam not found" });
 
-                // ✅ Verify ownership (teacher can only see their own exams)
+                // Verify ownership (teacher can only see their own exams)
                 if (exam.CreatedBy != teacherId)
                     return Forbid();
 
@@ -182,7 +180,7 @@ namespace QuizPortalAPI.Controllers
                 if (userId == 0)
                     return Unauthorized(new { message = "Invalid user ID" });
 
-                // ✅ Get all exams
+                // Get all exams
                 var exams = await _examService.GetAllExamsAsync();
 
                 _logger.LogInformation($"Admin {userId} retrieved all exams");
@@ -213,7 +211,7 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // ✅ Validate input
+                // Validate input
                 if (id <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
@@ -227,7 +225,7 @@ namespace QuizPortalAPI.Controllers
                 if (teacherId == 0)
                     return Unauthorized(new { message = "Invalid user ID" });
 
-                // ✅ Update exam (service verifies ownership)
+                // Update exam (service verifies ownership)
                 var updatedExam = await _examService.UpdateExamAsync(id, teacherId, updateExamDTO);
                 if (updatedExam == null)
                     return NotFound(new { message = "Exam not found" });
@@ -323,7 +321,7 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // ✅ Validate input
+                // Validate input
                 if (id <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
@@ -331,7 +329,7 @@ namespace QuizPortalAPI.Controllers
                 if (studentId == 0)
                     return Unauthorized(new { message = "Invalid user ID" });
 
-                // ✅ Get exam
+                // Get exam
                 var exam = await _examService.GetExamByIdAsync(id);
                 if (exam == null)
                 {
@@ -339,10 +337,10 @@ namespace QuizPortalAPI.Controllers
                     return NotFound(new { message = "Exam not found" });
                 }
 
-                // ✅ Check if student has already submitted this exam (Result with status "Completed" or "Graded")
+                // Check if student has already submitted this exam (Result with status "Completed" or "Graded")
                 var existingResult = await _context.Results
                     .FirstOrDefaultAsync(r => r.ExamID == id && r.StudentID == studentId && 
-                        (r.Status == "Completed" || r.Status == "Graded"));
+                        (r.Status == "Completed" || r.Status == "Graded")); 
                 
                 if (existingResult != null)
                 {
@@ -350,7 +348,7 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "You have already submitted this exam. You cannot access it again." });
                 }
 
-                // ✅ Check if exam is accessible (within schedule)
+                // Check if exam is accessible (within schedule)
                 var now = DateTime.UtcNow;
                 if (now < exam.ScheduleStart || now > exam.ScheduleEnd)
                 {
@@ -358,7 +356,7 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "Exam is not currently available" });
                 }
 
-                // ✅ Get questions with options for this exam
+                // Get questions with options for this exam
                 var questions = await _examService.GetExamQuestionsForStudentAsync(id);
 
                 _logger.LogInformation($"Student {studentId} retrieved exam {id} for taking");
@@ -401,7 +399,7 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // ✅ Validate input
+                // Validate input
                 if (accessExamDTO == null)
                     return BadRequest(new { message = "Invalid request data" });
 
@@ -414,7 +412,7 @@ namespace QuizPortalAPI.Controllers
                 if (string.IsNullOrWhiteSpace(accessExamDTO.AccessPassword))
                     return BadRequest(new { message = "Access password is required" });
 
-                // ✅ Validate access
+                // Validate access
                 var accessResponse = await _examService.ValidateAccessAsync(
                     accessExamDTO.AccessCode, 
                     accessExamDTO.AccessPassword);
@@ -428,7 +426,7 @@ namespace QuizPortalAPI.Controllers
                     return Ok(new { canAttempt = false, message = accessResponse.Message });
                 }
 
-                // ✅ Check if authenticated student has already submitted this exam
+                // Check if authenticated student has already submitted this exam
                 var studentId = GetLoggedInUserId();
                 if (studentId > 0 && accessResponse.ExamID > 0)
                 {

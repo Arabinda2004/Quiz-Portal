@@ -25,7 +25,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                // ✅ Verify teacher owns the exam
+                // Verify teacher owns the exam
                 var isOwner = await _examService.IsTeacherExamOwnerAsync(examId, teacherId);
                 if (!isOwner)
                     throw new UnauthorizedAccessException("You can only view responses for your own exams");
@@ -34,11 +34,11 @@ namespace QuizPortalAPI.Services
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
-                // ✅ Check if exam has ended - allow grading only after exam end time
+                // Check if exam has ended - allow grading only after exam end time
                 if (DateTime.UtcNow < exam.ScheduleEnd)
                     throw new InvalidOperationException($"Exam has not ended yet. Grading will be available after {exam.ScheduleEnd:yyyy-MM-dd HH:mm:ss} UTC");
 
-                // ✅ Get all student responses (both graded and pending)
+                // Get all student responses (both graded and pending)
                 var allResponses = await _context.StudentResponses
                     .Include(sr => sr.Question)
                     .Include(sr => sr.Student)
@@ -46,12 +46,12 @@ namespace QuizPortalAPI.Services
                     .OrderByDescending(r => r.SubmittedAt)
                     .ToListAsync();
 
-                // ✅ Get grading records to determine status
+                // Get grading records to determine status
                 var gradingRecords = await _context.GradingRecords
                     .Where(gr => allResponses.Select(sr => sr.ResponseID).Contains(gr.ResponseID) && gr.Status == "Graded")
                     .ToDictionaryAsync(gr => gr.ResponseID, gr => gr);
 
-                // ✅ Filter for pending responses only
+                // Filter for pending responses only
                 var pendingResponses = allResponses.Where(sr => !gradingRecords.ContainsKey(sr.ResponseID)).ToList();
 
                 var totalPending = pendingResponses.Count;

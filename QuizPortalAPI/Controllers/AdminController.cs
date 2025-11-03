@@ -254,8 +254,6 @@ namespace QuizPortalAPI.Controllers
         /// </summary>
         private string GenerateDefaultPassword()
         {
-            // Generate a secure default password
-            // In production, you might want to use a more sophisticated approach
             return $"TempPass{Guid.NewGuid().ToString().Substring(0, 8)}!";
         }
     }

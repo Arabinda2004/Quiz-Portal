@@ -52,7 +52,7 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // ✅ Validate input
+                // Validate input
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
@@ -66,7 +66,7 @@ namespace QuizPortalAPI.Controllers
                 if (studentId == 0)
                     return Unauthorized(new { message = "Invalid user ID" });
 
-                // ✅ Check if exam is active and not published
+                // Check if exam is active and not published
                 var canSubmit = await _responseService.CanSubmitAnswerAsync(examId, studentId);
                 if (!canSubmit)
                 {
@@ -74,7 +74,7 @@ namespace QuizPortalAPI.Controllers
                     return Conflict(new { message = "Exam is not active or results have already been published. Submission not allowed" });
                 }
 
-                // ✅ Submit answer
+                // Submit answer
                 var submittedResponse = await _responseService.SubmitAnswerAsync(examId, studentId, createResponseDTO);
 
                 _logger.LogInformation($"Student {studentId} submitted answer for exam {examId}");

@@ -3,26 +3,24 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { authService, adminService } from '../../services/api'
 import {
-  DashboardContainer,
-  NavBar,
-  NavLeft,
-  Logo,
-  NavMenu,
-  UserInfo,
-  LogoutButton,
+  AdminContainer,
+  Sidebar,
+  SidebarBrand,
+  SidebarMenu,
+  SidebarLink,
   MainContent,
-  PageTitle,
-  WelcomeSection,
-  Grid,
-  StatCard,
-  StatLabel,
-  StatValue,
+  PageHeader,
   Card,
-  Table,
-  ActionButton,
+  StatGrid,
+  StatCard,
+  DataTable,
+  PrimaryButton,
+  SecondaryButton,
   DangerButton,
-} from '../../styles/DashboardStyles'
-import { ErrorMessage } from '../../styles/SharedStyles'
+  ActionCell,
+  Alert,
+  StatusBadge,
+} from '../../styles/AdminStyles'
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
@@ -33,11 +31,13 @@ export default function AdminDashboard() {
     totalUsers: 0,
     totalTeachers: 0,
     totalStudents: 0,
+    totalAdmins: 0,
     totalExams: 0,
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [activeTab, setActiveTab] = useState('users')
+  const [activeMenu, setActiveMenu] = useState('overview')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   useEffect(() => {
     loadDashboardData()
@@ -46,7 +46,7 @@ export default function AdminDashboard() {
   const loadDashboardData = async () => {
     try {
       setLoading(true)
-      
+
       // Load users
       const usersData = await adminService.getAllUsers()
       setUsers(usersData || [])
@@ -58,12 +58,14 @@ export default function AdminDashboard() {
       // Calculate stats
       const teachers = usersData?.filter(u => u.role === 'Teacher').length || 0
       const students = usersData?.filter(u => u.role === 'Student').length || 0
+      const admins = usersData?.filter(u => u.role === 'Admin').length || 0
 
       setStats({
         totalUsers: usersData?.length || 0,
         totalTeachers: teachers,
         totalStudents: students,
-        totalExams: examsData.count || 0,
+        totalAdmins: admins,
+        totalExams: examsData.data?.length || 0,
       })
     } catch (err) {
       setError(err.message || 'Failed to load dashboard')
@@ -88,7 +90,7 @@ export default function AdminDashboard() {
     navigate('/admin/create-user')
   }
 
-  const handleEditUser = (userId) => {
+  const handleEditUser = userId => {
     navigate(`/admin/edit-user/${userId}`)
   }
 
@@ -105,185 +107,212 @@ export default function AdminDashboard() {
     }
   }
 
+  const menuItems = [
+    { id: 'overview', label: 'Dashboard', icon: '📊' },
+    { id: 'users', label: 'User Management', icon: '👥' },
+    { id: 'exams', label: 'Exam Management', icon: '📝' },
+    { id: 'reports', label: 'Reports', icon: '📈' },
+    // { id: 'settings', label: 'Settings', icon: '⚙️' },
+    { id: 'audit', label: 'Audit Logs', icon: '🔍' },
+  ]
+
+  const navigateTo = id => {
+    setActiveMenu(id)
+    switch (id) {
+      case 'users':
+        navigate('/admin/users')
+        break
+      case 'exams':
+        navigate('/admin/exams')
+        break
+      case 'reports':
+        navigate('/admin/reports')
+        break
+      case 'settings':
+        navigate('/admin/settings')
+        break
+      case 'audit':
+        navigate('/admin/audit-logs')
+        break
+      default:
+        break
+    }
+  }
+
   if (loading) {
     return (
-      <DashboardContainer>
-        <NavBar>
-          <NavLeft>
-            <Logo>Quiz Portal</Logo>
-          </NavLeft>
-        </NavBar>
-        <MainContent>
-          <PageTitle>Loading...</PageTitle>
+      <AdminContainer>
+        <MainContent style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Card style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <p>Loading Dashboard...</p>
+          </Card>
         </MainContent>
-      </DashboardContainer>
+      </AdminContainer>
     )
   }
 
   return (
-    <DashboardContainer>
-      <NavBar>
-        <NavLeft>
-          <Logo>Quiz Portal</Logo>
-        </NavLeft>
-        <NavMenu>
-          <UserInfo>
-            <span>{user?.fullName} ({user?.role})</span>
-          </UserInfo>
-          <LogoutButton onClick={handleLogout}>Logout</LogoutButton>
-        </NavMenu>
-      </NavBar>
+    <AdminContainer>
+      <Sidebar className={sidebarOpen ? 'open' : ''}>
+        <SidebarBrand>🎓 Quiz Portal</SidebarBrand>
+        <SidebarMenu>
+          {menuItems.map(item => (
+            <li key={item.id}>
+              <SidebarLink
+                active={activeMenu === item.id}
+                onClick={() => navigateTo(item.id)}
+                className={activeMenu === item.id ? 'active' : ''}
+              >
+                <span style={{ fontSize: '18px' }}>{item.icon}</span>
+                <span>{item.label}</span>
+              </SidebarLink>
+            </li>
+          ))}
+        </SidebarMenu>
+        <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: '1px solid rgba(255, 255, 255, 0.2)' }}>
+          <p style={{ fontSize: '12px', opacity: 0.8, margin: '0 0 12px 0' }}>Logged in as:</p>
+          <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 16px 0' }}>{user?.fullName}</p>
+          <button
+            onClick={handleLogout}
+            style={{
+              width: '100%',
+              padding: '10px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              color: 'white',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+            }}
+          >
+            Logout
+          </button>
+        </div>
+      </Sidebar>
 
       <MainContent>
-        <WelcomeSection>
-          <h1>Admin Dashboard</h1>
-          <p>Manage users, exams, and system settings</p>
-        </WelcomeSection>
-
         {error && (
-          <Card style={{ backgroundColor: '#fee', borderLeft: '4px solid #991b1b' }}>
+          <Alert type="error">
             {error}
-          </Card>
+            <button onClick={() => setError('')}>×</button>
+          </Alert>
         )}
 
-        <Grid>
+        <PageHeader>
+          <div>
+            <h1>Dashboard</h1>
+            <p>Welcome to the Admin Dashboard</p>
+          </div>
+        </PageHeader>
+
+        <StatGrid>
           <StatCard>
-            <StatLabel>Total Users</StatLabel>
-            <StatValue>{stats.totalUsers}</StatValue>
+            <h3>Total Users</h3>
+            <p className="value">{stats.totalUsers}</p>
           </StatCard>
           <StatCard>
-            <StatLabel>Teachers</StatLabel>
-            <StatValue>{stats.totalTeachers}</StatValue>
+            <h3>Administrators</h3>
+            <p className="value">{stats.totalAdmins}</p>
           </StatCard>
           <StatCard>
-            <StatLabel>Students</StatLabel>
-            <StatValue>{stats.totalStudents}</StatValue>
+            <h3>Teachers</h3>
+            <p className="value">{stats.totalTeachers}</p>
           </StatCard>
           <StatCard>
-            <StatLabel>Total Exams</StatLabel>
-            <StatValue>{stats.totalExams}</StatValue>
+            <h3>Students</h3>
+            <p className="value">{stats.totalStudents}</p>
           </StatCard>
-        </Grid>
+          <StatCard>
+            <h3>Total Exams</h3>
+            <p className="value">{stats.totalExams}</p>
+          </StatCard>
+        </StatGrid>
 
         <Card>
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #e5e7eb', paddingBottom: '16px' }}>
-            <button
-              onClick={() => setActiveTab('users')}
-              style={{
-                padding: '8px 16px',
-                border: 'none',
-                background: activeTab === 'users' ? '#1e40af' : '#f3f4f6',
-                color: activeTab === 'users' ? 'white' : '#1f2937',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '14px',
-              }}
-            >
-              Users
-            </button>
-            <button
-              onClick={() => setActiveTab('exams')}
-              style={{
-                padding: '8px 16px',
-                border: 'none',
-                background: activeTab === 'exams' ? '#1e40af' : '#f3f4f6',
-                color: activeTab === 'exams' ? 'white' : '#1f2937',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '14px',
-              }}
-            >
-              Exams
-            </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ margin: 0 }}>Recent Users</h2>
+            <PrimaryButton onClick={handleCreateUser}>+ Add New User</PrimaryButton>
           </div>
 
-          {activeTab === 'users' && (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <PageTitle style={{ margin: 0 }}>Users Management</PageTitle>
-                <ActionButton onClick={handleCreateUser}>Add New User</ActionButton>
-              </div>
-
-              {users.length === 0 ? (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px' }}>No users found</p>
-              ) : (
-                <Table>
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Role</th>
-                      <th>Created At</th>
-                      <th>Actions</th>
+          {users.length === 0 ? (
+            <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px' }}>No users found</p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <DataTable>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.slice(0, 10).map(userItem => (
+                    <tr key={userItem.userID}>
+                      <td>
+                        <strong>{userItem.fullName}</strong>
+                      </td>
+                      <td>{userItem.email}</td>
+                      <td>
+                        <StatusBadge status={userItem.role}>{userItem.role}</StatusBadge>
+                      </td>
+                      <td>{new Date(userItem.createdAt).toLocaleDateString()}</td>
+                      <td>
+                        <ActionCell>
+                          <SecondaryButton onClick={() => handleEditUser(userItem.userID)}>Edit</SecondaryButton>
+                          <DangerButton onClick={() => handleDeleteUser(userItem.userID, userItem.fullName)}>
+                            Delete
+                          </DangerButton>
+                        </ActionCell>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {users.map((userItem) => (
-                      <tr key={userItem.userID}>
-                        <td>{userItem.fullName}</td>
-                        <td>{userItem.email}</td>
-                        <td>
-                          <span style={{
-                            display: 'inline-block',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            backgroundColor: userItem.role === 'Teacher' ? '#dbeafe' : userItem.role === 'Admin' ? '#fecaca' : '#d1fae5',
-                            color: userItem.role === 'Teacher' ? '#0c4a6e' : userItem.role === 'Admin' ? '#7c2d12' : '#065f46',
-                          }}>
-                            {userItem.role}
-                          </span>
-                        </td>
-                        <td>{new Date(userItem.createdAt).toLocaleDateString()}</td>
-                        <td>
-                          <ActionButton onClick={() => handleEditUser(userItem.userID)}>Edit</ActionButton>
-                          <DangerButton onClick={() => handleDeleteUser(userItem.userID, userItem.fullName)}>Delete</DangerButton>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-            </>
+                  ))}
+                </tbody>
+              </DataTable>
+            </div>
           )}
+        </Card>
 
-          {activeTab === 'exams' && (
-            <>
-              <PageTitle style={{ marginTop: 0 }}>Exams</PageTitle>
+        <Card>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ margin: 0 }}>Recent Exams</h2>
+          </div>
 
-              {exams.length === 0 ? (
-                <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px' }}>No exams found</p>
-              ) : (
-                <Table>
-                  <thead>
-                    <tr>
-                      <th>Title</th>
-                      <th>Creator</th>
-                      <th>Total Marks</th>
-                      <th>Duration (mins)</th>
-                      <th>Schedule Start</th>
+          {exams.length === 0 ? (
+            <p style={{ color: '#6b7280', textAlign: 'center', padding: '20px' }}>No exams found</p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <DataTable>
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Creator</th>
+                    <th>Total Marks</th>
+                    <th>Duration (mins)</th>
+                    <th>Schedule Start</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {exams.slice(0, 10).map(exam => (
+                    <tr key={exam.examID}>
+                      <td>
+                        <strong>{exam.title}</strong>
+                      </td>
+                      <td>{exam.createdByName || 'N/A'}</td>
+                      <td>{exam.totalMarks}</td>
+                      <td>{exam.durationMinutes}</td>
+                      <td>{new Date(exam.scheduleStart).toLocaleDateString()}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {exams.map((exam) => (
-                      <tr key={exam.examID}>
-                        <td>{exam.title}</td>
-                        <td>{exam.createdByName || 'N/A'}</td>
-                        <td>{exam.totalMarks}</td>
-                        <td>{exam.durationMinutes}</td>
-                        <td>{new Date(exam.scheduleStart).toLocaleDateString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              )}
-            </>
+                  ))}
+                </tbody>
+              </DataTable>
+            </div>
           )}
         </Card>
       </MainContent>
-    </DashboardContainer>
+    </AdminContainer>
   )
 }

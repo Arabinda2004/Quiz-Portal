@@ -12,16 +12,13 @@ namespace QuizPortalAPI.Controllers
     public class GradingController : ControllerBase
     {
         private readonly IGradingService _gradingService;
-        private readonly IExamService _examService;
         private readonly ILogger<GradingController> _logger;
 
         public GradingController(
             IGradingService gradingService,
-            IExamService examService,
             ILogger<GradingController> logger)
         {
             _gradingService = gradingService;
-            _examService = examService;
             _logger = logger;
         }
 

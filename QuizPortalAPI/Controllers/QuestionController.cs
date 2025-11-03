@@ -12,16 +12,13 @@ namespace QuizPortalAPI.Controllers
     public class QuestionController : ControllerBase
     {
         private readonly IQuestionService _questionService;
-        private readonly IExamService _examService;
         private readonly ILogger<QuestionController> _logger;
 
         public QuestionController(
             IQuestionService questionService,
-            IExamService examService,
             ILogger<QuestionController> logger)
         {
             _questionService = questionService;
-            _examService = examService;
             _logger = logger;
         }
 
@@ -51,7 +48,7 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // ✅ Validate input
+                // Validate input
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
@@ -65,7 +62,7 @@ namespace QuizPortalAPI.Controllers
                 if (teacherId == 0)
                     return Unauthorized(new { message = "Invalid user ID" });
 
-                // ✅ Create question
+                // Create question
                 var createdQuestion = await _questionService.CreateQuestionAsync(examId, teacherId, createQuestionDTO);
 
                 _logger.LogInformation($"Question created for exam {examId} by teacher {teacherId}");

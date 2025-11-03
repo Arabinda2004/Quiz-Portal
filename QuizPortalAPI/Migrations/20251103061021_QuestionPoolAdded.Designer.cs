@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using QuizPortalAPI.Data;
@@ -11,9 +12,11 @@ using QuizPortalAPI.Data;
 namespace QuizPortalAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251103061021_QuestionPoolAdded")]
+    partial class QuestionPoolAdded
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -209,10 +212,6 @@ namespace QuizPortalAPI.Migrations
                     b.Property<int>("GradedByTeacherID")
                         .HasColumnType("integer");
 
-                    b.Property<string>("GradingRemark")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
                     b.Property<bool>("IsPartialCredit")
                         .HasColumnType("boolean");
 
@@ -270,7 +269,7 @@ namespace QuizPortalAPI.Migrations
                     b.Property<int>("CreatedBy")
                         .HasColumnType("integer");
 
-                    b.Property<int>("ExamID")
+                    b.Property<int?>("ExamID")
                         .HasColumnType("integer");
 
                     b.Property<decimal>("Marks")
@@ -278,6 +277,9 @@ namespace QuizPortalAPI.Migrations
 
                     b.Property<decimal>("NegativeMarks")
                         .HasColumnType("numeric");
+
+                    b.Property<int?>("QuestionPoolID")
+                        .HasColumnType("integer");
 
                     b.Property<string>("QuestionText")
                         .IsRequired()
@@ -291,6 +293,8 @@ namespace QuizPortalAPI.Migrations
                     b.HasIndex("CreatedBy");
 
                     b.HasIndex("ExamID");
+
+                    b.HasIndex("QuestionPoolID");
 
                     b.ToTable("Questions");
                 });
@@ -323,6 +327,72 @@ namespace QuizPortalAPI.Migrations
                     b.HasIndex("QuestionID");
 
                     b.ToTable("QuestionOptions");
+                });
+
+            modelBuilder.Entity("QuizPortalAPI.Models.QuestionPool", b =>
+                {
+                    b.Property<int>("QuestionPoolID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("QuestionPoolID"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PoolName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("QuestionPoolID");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.ToTable("QuestionPools");
+                });
+
+            modelBuilder.Entity("QuizPortalAPI.Models.RefreshToken", b =>
+                {
+                    b.Property<int>("RefreshTokenId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("RefreshTokenId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("RefreshTokenId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("QuizPortalAPI.Models.Result", b =>
@@ -553,12 +623,18 @@ namespace QuizPortalAPI.Migrations
                     b.HasOne("QuizPortalAPI.Models.Exam", "Exam")
                         .WithMany("Questions")
                         .HasForeignKey("ExamID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("QuizPortalAPI.Models.QuestionPool", "QuestionPool")
+                        .WithMany("Questions")
+                        .HasForeignKey("QuestionPoolID")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("Exam");
+
+                    b.Navigation("QuestionPool");
                 });
 
             modelBuilder.Entity("QuizPortalAPI.Models.QuestionOption", b =>
@@ -570,6 +646,28 @@ namespace QuizPortalAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("Question");
+                });
+
+            modelBuilder.Entity("QuizPortalAPI.Models.QuestionPool", b =>
+                {
+                    b.HasOne("QuizPortalAPI.Models.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+                });
+
+            modelBuilder.Entity("QuizPortalAPI.Models.RefreshToken", b =>
+                {
+                    b.HasOne("QuizPortalAPI.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("QuizPortalAPI.Models.Result", b =>
@@ -633,6 +731,11 @@ namespace QuizPortalAPI.Migrations
             modelBuilder.Entity("QuizPortalAPI.Models.Question", b =>
                 {
                     b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("QuizPortalAPI.Models.QuestionPool", b =>
+                {
+                    b.Navigation("Questions");
                 });
 #pragma warning restore 612, 618
         }

@@ -2,6 +2,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 
+// Public pages
+import LandingPage from './pages/LandingPage'
+
 // Auth pages
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -27,6 +30,13 @@ import ResultDetail from './pages/Student/ResultDetail'
 
 // Admin pages
 import AdminDashboard from './pages/Admin/Dashboard'
+import UserManagement from './pages/Admin/UserManagement'
+import CreateUser from './pages/Admin/CreateUser'
+import EditUser from './pages/Admin/EditUser'
+import ExamManagement from './pages/Admin/ExamManagement'
+import SystemReports from './pages/Admin/SystemReports'
+import SystemSettings from './pages/Admin/SystemSettings'
+import AuditLogs from './pages/Admin/AuditLogs'
 
 function App() {
   return (
@@ -34,6 +44,7 @@ function App() {
       <AuthProvider>
         <Routes>
           {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 
@@ -186,10 +197,65 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <UserManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/create-user"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <CreateUser />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/edit-user/:userId"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <EditUser />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/exams"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <ExamManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/reports"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <SystemReports />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <SystemSettings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/audit-logs"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <AuditLogs />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </Router>

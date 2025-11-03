@@ -81,7 +81,7 @@ namespace QuizPortalAPI.Services
                     Email = createUserDTO.Email,
                     Password = BCrypt.Net.BCrypt.HashPassword(createUserDTO.Password),
                     Role = role,
-                    IsDefaultPassword = false,
+                    IsDefaultPassword = true,
                     CreatedAt = DateTime.UtcNow
                 };
 

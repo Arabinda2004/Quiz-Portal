@@ -37,6 +37,8 @@ namespace QuizPortalAPI.DTOs.Exam
 
         public DateTime CreatedAt { get; set; }
 
+        // public DateTime? UpdatedAt { get; set; }
+
         public bool IsActive { get; set; }  // True if current time is between ScheduleStart and ScheduleEnd
 
         public TimeSpan? TimeUntilStart { get; set; }
