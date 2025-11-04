@@ -1,5 +1,3 @@
-// User controller 
-
 using Microsoft.AspNetCore.Mvc;
 using QuizPortalAPI.DTOs.User;
 using QuizPortalAPI.DTOs.Auth;
@@ -10,7 +8,7 @@ using System.Security.Claims;
 namespace QuizPortalAPI.Controllers
 {
     [ApiController]
-    [Route("api/users")]  //  Changed from api/[controller]
+    [Route("api/users")] 
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
