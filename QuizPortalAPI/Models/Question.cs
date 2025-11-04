@@ -39,9 +39,6 @@ namespace QuizPortalAPI.Models
         [Range(0.1, 100)]
         public decimal Marks { get; set; }
 
-        [Range(0, 100)]
-        public decimal NegativeMarks { get; set; } = 0;
-
         [Required]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

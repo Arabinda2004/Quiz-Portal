@@ -211,8 +211,10 @@ export const teacherService = {
   getExamStatistics: async (examId) => {
     try {
       const response = await api.get(`/teacher/exams/${examId}/responses/statistics`)
+      console.log(`Exam Statistics Response for examId ${examId}:`, response.data)
       return response.data
     } catch (error) {
+      console.error(`Error fetching exam statistics for examId ${examId}:`, error)
       throw error.response?.data || error.message
     }
   },
@@ -220,8 +222,10 @@ export const teacherService = {
   getQuestionStatistics: async (examId, questionId) => {
     try {
       const response = await api.get(`/teacher/exams/${examId}/responses/questions/${questionId}/statistics`)
+      console.log(`Question Statistics Response for questionId ${questionId}:`, response.data)
       return response.data
     } catch (error) {
+      console.error(`Error fetching question statistics:`, error)
       throw error.response?.data || error.message
     }
   },
@@ -426,36 +430,6 @@ export const adminService = {
     }
   },
 
-  // Create user
-  createUser: async (data) => {
-    try {
-      const response = await api.post('/admin/users', data)
-      return response.data
-    } catch (error) {
-      throw error.response?.data || error.message
-    }
-  },
-
-  // Update user
-  updateUser: async (userId, data) => {
-    try {
-      const response = await api.put(`/admin/users/${userId}`, data)
-      return response.data
-    } catch (error) {
-      throw error.response?.data || error.message
-    }
-  },
-
-  // Delete user
-  deleteUser: async (userId) => {
-    try {
-      const response = await api.delete(`/admin/users/${userId}`)
-      return response.data
-    } catch (error) {
-      throw error.response?.data || error.message
-    }
-  },
-
   // Get all exams
   getAllExams: async () => {
     try {
@@ -464,6 +438,55 @@ export const adminService = {
       console.log(response.data)
       return response.data
     } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Get exam by ID (admin-accessible endpoint)
+  getExamById: async (examId) => {
+    try {
+      const response = await api.get(`/admin/exams/${examId}`)
+      console.log(`Getting exam ${examId} by ID...`)
+      console.log(response.data)
+      return response.data
+    } catch (error) {
+      console.error(`Error getting exam ${examId}:`, error)
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Get exam statistics (admin-accessible endpoint)
+  getExamStatistics: async (examId) => {
+    try {
+      const response = await api.get(`/admin/exams/${examId}/responses/statistics`)
+      console.log(`Getting exam statistics for examId ${examId}:`, response.data)
+      return response.data
+    } catch (error) {
+      console.error(`Error getting exam statistics for ${examId}:`, error)
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Get all student attempts for an exam (admin-accessible endpoint)
+  getStudentAttempts: async (examId) => {
+    try {
+      const response = await api.get(`/admin/exams/${examId}/responses/students`)
+      console.log(`Getting student attempts for examId ${examId}:`, response.data)
+      return response.data
+    } catch (error) {
+      console.error(`Error getting student attempts for ${examId}:`, error)
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Get exam questions (admin-accessible endpoint)
+  getExamQuestions: async (examId) => {
+    try {
+      const response = await api.get(`/admin/exams/${examId}/questions`)
+      console.log(`Getting exam questions for examId ${examId}:`, response.data)
+      return response.data
+    } catch (error) {
+      console.error(`Error getting exam questions for ${examId}:`, error)
       throw error.response?.data || error.message
     }
   },

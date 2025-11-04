@@ -35,8 +35,6 @@ namespace QuizPortalAPI.Models
         [Required]
         public DateTime ScheduleEnd { get; set; }
 
-        public bool HasNegativeMarking { get; set; } = false;
-
         [Required]
         [Range(0, 100)]
         public decimal PassingPercentage { get; set; } = 40;

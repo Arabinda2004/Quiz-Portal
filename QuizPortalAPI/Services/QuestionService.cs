@@ -53,19 +53,12 @@ namespace QuizPortalAPI.Services
                 if (createQuestionDTO.Marks <= 0)
                     throw new InvalidOperationException("Marks must be greater than 0");
 
-                if (createQuestionDTO.NegativeMarks < 0)
-                    throw new InvalidOperationException("Negative marks cannot be negative");
-
                 // Note: No validation for total marks limit since TotalMarks is now dynamically calculated from questions
 
                 // Validate options for MCQ
                 if (createQuestionDTO.QuestionType == QuestionType.MCQ)
                 {
-                    if (createQuestionDTO.Options == null || createQuestionDTO.Options.Count == 0)
-                        throw new InvalidOperationException("MCQ questions must have at least one option");
-
-                    // NEW: MCQ must have exactly 4 options
-                    if (createQuestionDTO.Options.Count != 4)
+                    if (createQuestionDTO.Options == null || createQuestionDTO.Options.Count != 4)
                         throw new InvalidOperationException("MCQ questions must have exactly 4 options");
 
                     var correctOptionsCount = createQuestionDTO.Options.Count(o => o.IsCorrect);
@@ -85,7 +78,6 @@ namespace QuizPortalAPI.Services
                     QuestionText = createQuestionDTO.QuestionText,
                     QuestionType = createQuestionDTO.QuestionType,
                     Marks = createQuestionDTO.Marks,
-                    NegativeMarks = createQuestionDTO.NegativeMarks,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -234,14 +226,6 @@ namespace QuizPortalAPI.Services
                     // Note: No validation for total marks limit since TotalMarks is now dynamically calculated from questions
                     
                     question.Marks = updateQuestionDTO.Marks.Value;
-                }
-
-                // Update negative marks if provided
-                if (updateQuestionDTO.NegativeMarks.HasValue)
-                {
-                    if (updateQuestionDTO.NegativeMarks < 0)
-                        throw new InvalidOperationException("Negative marks cannot be negative");
-                    question.NegativeMarks = updateQuestionDTO.NegativeMarks.Value;
                 }
 
                 // Update options if provided
@@ -498,7 +482,6 @@ namespace QuizPortalAPI.Services
                 QuestionText = question.QuestionText,
                 QuestionType = question.QuestionType,
                 Marks = question.Marks,
-                NegativeMarks = question.NegativeMarks,
                 CreatedAt = question.CreatedAt,
                 Options = question.Options?.Select(o => new QuestionOptionResponseDTO
                 {
@@ -521,7 +504,6 @@ namespace QuizPortalAPI.Services
                 QuestionText = question.QuestionText,
                 QuestionType = question.QuestionType,
                 Marks = question.Marks,
-                NegativeMarks = question.NegativeMarks,
                 OptionCount = question.Options?.Count ?? 0,
                 CreatedAt = question.CreatedAt
             };

@@ -341,7 +341,6 @@ export default function QuestionForm() {
       { optionID: 4, optionText: '', isCorrect: false },
     ],
     correctAnswer: '', // For short/long answers
-    explanation: '',
   })
 
   const [validationErrors, setValidationErrors] = useState({})
@@ -479,25 +478,17 @@ export default function QuestionForm() {
 
   const handleOptionChange = (index, field, value) => {
     const newOptions = [...formData.options]
-    newOptions[index] = { ...newOptions[index], [field]: value }
-    setFormData((prev) => ({ ...prev, options: newOptions }))
-  }
-
-  const handleAddOption = () => {
-    // MCQ must have exactly 4 options, prevent adding more
-    if (formData.questionType === 'MCQ' && formData.options.length >= 4) {
-      setError('MCQ questions can have at most 4 options')
-      return
+    
+    // If setting isCorrect to true, deselect all other options (radio button behavior)
+    if (field === 'isCorrect' && value === true) {
+      newOptions.forEach((opt, idx) => {
+        opt.isCorrect = idx === index
+      })
+    } else {
+      newOptions[index] = { ...newOptions[index], [field]: value }
     }
-
-    const newOptionID = Math.max(...formData.options.map((o) => o.optionID || 0), 0) + 1
-    setFormData((prev) => ({
-      ...prev,
-      options: [
-        ...prev.options,
-        { optionID: newOptionID, optionText: '', isCorrect: false },
-      ],
-    }))
+    
+    setFormData((prev) => ({ ...prev, options: newOptions }))
   }
 
   const handleRemoveOption = (index) => {
@@ -716,10 +707,11 @@ export default function QuestionForm() {
                   {formData.options.map((option, index) => (
                     <OptionItem key={index}>
                       <CheckboxInput
-                        type="checkbox"
+                        type="radio"
+                        name="correctOption"
                         checked={option.isCorrect}
                         onChange={(e) => handleOptionChange(index, 'isCorrect', e.target.checked)}
-                        title="Mark as correct answer"
+                        title="Mark as correct answer (only one option can be correct)"
                         disabled={examStatus !== 'Upcoming'}
                       />
                       <div style={{ flex: 1 }}>
@@ -748,18 +740,6 @@ export default function QuestionForm() {
                     </OptionItem>
                   ))}
 
-                  <AddButton
-                    type="button"
-                    onClick={handleAddOption}
-                    disabled={formData.options.length >= 4 || examStatus !== 'Upcoming'}
-                    style={{
-                      opacity: formData.options.length >= 4 || examStatus !== 'Upcoming' ? 0.5 : 1,
-                      cursor: formData.options.length >= 4 || examStatus !== 'Upcoming' ? 'not-allowed' : 'pointer'
-                    }}
-                    title={formData.options.length >= 4 ? 'MCQ must have exactly 4 options' : examStatus !== 'Upcoming' ? 'Cannot modify questions for this exam' : 'Add new option'}
-                  >
-                    + Add Option
-                  </AddButton>
                 </OptionsContainer>
                 {validationErrors.options && (
                   <Helper style={{ color: '#ef4444' }}>{validationErrors.options}</Helper>
@@ -775,20 +755,6 @@ export default function QuestionForm() {
                 </Helper>
               </FormGroup>
             )}
-
-            {/* Explanation */}
-            <FormGroup>
-              <Label htmlFor="explanation">Explanation</Label>
-              <TextArea
-                id="explanation"
-                name="explanation"
-                value={formData.explanation}
-                onChange={handleInputChange}
-                placeholder="Provide an explanation for the correct answer..."
-                disabled={examStatus !== 'Upcoming'}
-              />
-              <Helper>Optional: Help students understand the correct answer</Helper>
-            </FormGroup>
 
             {/* Buttons */}
             <ButtonGroup>

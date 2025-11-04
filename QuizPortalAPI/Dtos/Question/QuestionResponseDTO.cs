@@ -14,8 +14,6 @@ namespace QuizPortalAPI.DTOs.Question
 
         public decimal Marks { get; set; }
 
-        public decimal NegativeMarks { get; set; }
-
         public DateTime CreatedAt { get; set; }
 
         public List<QuestionOptionResponseDTO> Options { get; set; } = new();

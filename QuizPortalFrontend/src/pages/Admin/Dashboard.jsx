@@ -14,10 +14,6 @@ import {
   StatGrid,
   StatCard,
   DataTable,
-  PrimaryButton,
-  SecondaryButton,
-  DangerButton,
-  ActionCell,
   Alert,
   StatusBadge,
 } from '../../styles/AdminStyles'
@@ -83,27 +79,6 @@ export default function AdminDashboard() {
       console.error('Logout failed:', err)
       logout()
       navigate('/login')
-    }
-  }
-
-  const handleCreateUser = () => {
-    navigate('/admin/create-user')
-  }
-
-  const handleEditUser = userId => {
-    navigate(`/admin/edit-user/${userId}`)
-  }
-
-  const handleDeleteUser = async (userId, userName) => {
-    if (!window.confirm(`Are you sure you want to delete ${userName}?`)) {
-      return
-    }
-
-    try {
-      await adminService.deleteUser(userId)
-      loadDashboardData()
-    } catch (err) {
-      setError('Failed to delete user')
     }
   }
 
@@ -232,7 +207,6 @@ export default function AdminDashboard() {
         <Card>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h2 style={{ margin: 0 }}>Recent Users</h2>
-            <PrimaryButton onClick={handleCreateUser}>+ Add New User</PrimaryButton>
           </div>
 
           {users.length === 0 ? (
@@ -246,7 +220,6 @@ export default function AdminDashboard() {
                     <th>Email</th>
                     <th>Role</th>
                     <th>Created At</th>
-                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -260,14 +233,6 @@ export default function AdminDashboard() {
                         <StatusBadge status={userItem.role}>{userItem.role}</StatusBadge>
                       </td>
                       <td>{new Date(userItem.createdAt).toLocaleDateString()}</td>
-                      <td>
-                        <ActionCell>
-                          <SecondaryButton onClick={() => handleEditUser(userItem.userID)}>Edit</SecondaryButton>
-                          <DangerButton onClick={() => handleDeleteUser(userItem.userID, userItem.fullName)}>
-                            Delete
-                          </DangerButton>
-                        </ActionCell>
-                      </td>
                     </tr>
                   ))}
                 </tbody>

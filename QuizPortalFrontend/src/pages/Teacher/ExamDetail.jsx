@@ -368,8 +368,11 @@ export default function ExamDetail() {
   const loadStatistics = async () => {
     try {
       const response = await teacherService.getExamStatistics(examId)
-      setStatistics(response.data || {})
+      // The API returns { data: {...} } structure, so extract the data properly
+      const statsData = response.data || response || {}
+      setStatistics(statsData)
     } catch (err) {
+      console.error('Error loading statistics:', err)
       setError('Failed to load statistics')
     }
   }
@@ -600,22 +603,6 @@ export default function ExamDetail() {
                 <p>{exam.batchRemark}</p>
               </Card>
             )}
-
-            <Card>
-              <h3>Exam Configuration</h3>
-              <ExamInfo>
-                <InfoItem>
-                  <InfoLabel>Allow Negative Marks</InfoLabel>
-                  <InfoValue>{exam.allowNegativeMarks ? 'Yes' : 'No'}</InfoValue>
-                </InfoItem>
-                {exam.allowNegativeMarks && (
-                  <InfoItem>
-                    <InfoLabel>Negative Mark %</InfoLabel>
-                    <InfoValue>{exam.negativeMarkPercentage}%</InfoValue>
-                  </InfoItem>
-                )}
-              </ExamInfo>
-            </Card>
           </TabContent>
 
           {/* Questions Tab */}

@@ -29,8 +29,6 @@ namespace QuizPortalAPI.DTOs.Exam
         [Range(0, 100, ErrorMessage = "Passing percentage must be between 0 and 100")]
         public decimal PassingPercentage { get; set; } = 40;
 
-        public bool HasNegativeMarking { get; set; } = false;
-
         [Required(ErrorMessage = "Access password is required")]
         [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be between 6 and 100 characters")]
         public string AccessPassword { get; set; } = string.Empty;

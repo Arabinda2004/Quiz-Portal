@@ -86,7 +86,6 @@ namespace QuizPortalAPI.Services
                     ScheduleStart = createExamDTO.ScheduleStart,
                     ScheduleEnd = createExamDTO.ScheduleEnd,
                     PassingPercentage = createExamDTO.PassingPercentage,
-                    HasNegativeMarking = createExamDTO.HasNegativeMarking,
                     AccessCode = accessCode,
                     AccessPassword = hashedPassword,
                     CreatedAt = DateTime.UtcNow
@@ -535,14 +534,6 @@ namespace QuizPortalAPI.Services
                     exam.PassingPercentage = updateExamDTO.PassingPercentage.Value;
                 }
 
-                // Update negative marking
-                if (updateExamDTO.HasNegativeMarking.HasValue &&
-                    exam.HasNegativeMarking != updateExamDTO.HasNegativeMarking.Value)
-                {
-                    changes.Add($"NegativeMarking: {exam.HasNegativeMarking} → {updateExamDTO.HasNegativeMarking.Value}");
-                    exam.HasNegativeMarking = updateExamDTO.HasNegativeMarking.Value;
-                }
-
                 // Update password (hash it)
                 if (!string.IsNullOrWhiteSpace(updateExamDTO.AccessPassword))
                 {
@@ -702,7 +693,6 @@ namespace QuizPortalAPI.Services
                         PassingPercentage = exam.PassingPercentage,
                         TotalMarks = exam.TotalMarks,
                         PassingMarks = exam.PassingMarks,
-                        HasNegativeMarking = exam.HasNegativeMarking,
                         BatchRemark = exam.BatchRemark,
                         CreatedByUserName = exam.CreatedByUser?.FullName ?? "Unknown",
                         CanAttempt = false,
@@ -735,7 +725,6 @@ namespace QuizPortalAPI.Services
                     PassingPercentage = exam.PassingPercentage,
                     TotalMarks = exam.TotalMarks,
                     PassingMarks = exam.PassingMarks,
-                    HasNegativeMarking = exam.HasNegativeMarking,
                     BatchRemark = exam.BatchRemark,
                     CreatedByUserName = exam.CreatedByUser?.FullName ?? "Unknown",
                     CanAttempt = true,
@@ -821,7 +810,6 @@ namespace QuizPortalAPI.Services
                 PassingPercentage = exam.PassingPercentage,
                 TotalMarks = exam.TotalMarks,  // Computed property
                 PassingMarks = exam.PassingMarks,  // Computed property
-                HasNegativeMarking = exam.HasNegativeMarking,
                 AccessCode = exam.AccessCode,
                 CreatedAt = exam.CreatedAt,
                 // UpdatedAt = exam.UpdatedAt,
@@ -876,7 +864,6 @@ namespace QuizPortalAPI.Services
                             questionText = q.QuestionText,
                             questionType = (int)q.QuestionType,
                             marks = q.Marks,
-                            negativeMarks = q.NegativeMarks,
                             options = options
                         });
                     }

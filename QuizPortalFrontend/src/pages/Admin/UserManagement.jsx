@@ -4,13 +4,8 @@ import { useAuth } from '../../context/AuthContext'
 import { adminService } from '../../services/api'
 import {
   PageHeader,
-  HeaderActions,
   DataTable,
   Card,
-  PrimaryButton,
-  DangerButton,
-  SecondaryButton,
-  ActionCell,
   StatusBadge,
   EmptyState,
   LoadingSpinner,
@@ -48,30 +43,7 @@ export default function UserManagement() {
     }
   }
 
-  const handleDeleteUser = async (userId, userName) => {
-    if (!window.confirm(`Are you sure you want to delete "${userName}"? This action cannot be undone.`)) {
-      return
-    }
 
-    try {
-      setError('')
-      setSuccess('')
-      await adminService.deleteUser(userId)
-      setSuccess(`User "${userName}" deleted successfully`)
-      loadUsers()
-      setTimeout(() => setSuccess(''), 3000)
-    } catch (err) {
-      setError(err.message || 'Failed to delete user')
-    }
-  }
-
-  const handleEditUser = (userId) => {
-    navigate(`/admin/edit-user/${userId}`)
-  }
-
-  const handleCreateUser = () => {
-    navigate('/admin/create-user')
-  }
 
   // Filter users
   const filteredUsers = users.filter(userItem => {
@@ -115,11 +87,8 @@ export default function UserManagement() {
       <PageHeader>
         <div>
           <h1>User Management</h1>
-          <p>Manage all system users and their roles</p>
+          <p>View all system users and their roles</p>
         </div>
-        <HeaderActions>
-          <PrimaryButton onClick={handleCreateUser}>+ Add New User</PrimaryButton>
-        </HeaderActions>
       </PageHeader>
 
       <Card>
@@ -151,7 +120,7 @@ export default function UserManagement() {
         {paginatedUsers.length === 0 ? (
           <EmptyState>
             <h3>No users found</h3>
-            <p>{searchTerm || filterRole !== 'All' ? 'Try adjusting your filters' : 'Click "Add New User" to get started'}</p>
+            <p>{searchTerm || filterRole !== 'All' ? 'Try adjusting your filters' : 'No users available'}</p>
           </EmptyState>
         ) : (
           <>
@@ -162,7 +131,6 @@ export default function UserManagement() {
                   <th>Email</th>
                   <th>Role</th>
                   <th>Created</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,14 +144,6 @@ export default function UserManagement() {
                       <StatusBadge status={userItem.role}>{userItem.role}</StatusBadge>
                     </td>
                     <td>{new Date(userItem.createdAt).toLocaleDateString()}</td>
-                    <td>
-                      <ActionCell>
-                        <SecondaryButton onClick={() => handleEditUser(userItem.userID)}>Edit</SecondaryButton>
-                        <DangerButton onClick={() => handleDeleteUser(userItem.userID, userItem.fullName)}>
-                          Delete
-                        </DangerButton>
-                      </ActionCell>
-                    </td>
                   </tr>
                 ))}
               </tbody>

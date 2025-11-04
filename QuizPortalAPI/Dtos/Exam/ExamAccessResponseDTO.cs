@@ -24,8 +24,6 @@ namespace QuizPortalAPI.DTOs.Exam
 
         public decimal PassingMarks { get; set; }  // Computed from TotalMarks * PassingPercentage
 
-        public bool HasNegativeMarking { get; set; }
-
         public string? BatchRemark { get; set; }
 
         public string CreatedByUserName { get; set; } = string.Empty;

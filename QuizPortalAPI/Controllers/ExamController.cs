@@ -372,7 +372,6 @@ namespace QuizPortalAPI.Controllers
                         scheduleEnd = exam.ScheduleEnd,
                         totalMarks = exam.TotalMarks,
                         passingMarks = exam.PassingMarks,
-                        hasNegativeMarking = exam.HasNegativeMarking,
                         batchRemark = exam.BatchRemark,
                         questions = questions
                     }

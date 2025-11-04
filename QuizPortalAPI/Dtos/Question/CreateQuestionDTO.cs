@@ -16,9 +16,6 @@ namespace QuizPortalAPI.DTOs.Question
         [Range(0.1, 100, ErrorMessage = "Marks must be between 0.1 and 100")]
         public decimal Marks { get; set; }
 
-        [Range(0, 100, ErrorMessage = "Negative marks must be between 0 and 100")]
-        public decimal NegativeMarks { get; set; } = 0;
-
         [Required(ErrorMessage = "At least one option is required for MCQ")]
         public List<CreateQuestionOptionDTO> Options { get; set; } = new();
     }

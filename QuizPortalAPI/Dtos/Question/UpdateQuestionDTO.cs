@@ -11,9 +11,6 @@ namespace QuizPortalAPI.DTOs.Question
         [Range(0.1, 100, ErrorMessage = "Marks must be between 0.1 and 100")]
         public decimal? Marks { get; set; }
 
-        [Range(0, 100, ErrorMessage = "Negative marks must be between 0 and 100")]
-        public decimal? NegativeMarks { get; set; }
-
         public List<UpdateQuestionOptionDTO>? Options { get; set; }
     }
 

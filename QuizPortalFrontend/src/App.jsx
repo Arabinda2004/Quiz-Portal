@@ -31,9 +31,8 @@ import ResultDetail from './pages/Student/ResultDetail'
 // Admin pages
 import AdminDashboard from './pages/Admin/Dashboard'
 import UserManagement from './pages/Admin/UserManagement'
-import CreateUser from './pages/Admin/CreateUser'
-import EditUser from './pages/Admin/EditUser'
 import ExamManagement from './pages/Admin/ExamManagement'
+import AdminExamDetail from './pages/Admin/AdminExamDetail'
 import SystemReports from './pages/Admin/SystemReports'
 import SystemSettings from './pages/Admin/SystemSettings'
 import AuditLogs from './pages/Admin/AuditLogs'
@@ -206,26 +205,18 @@ function App() {
             }
           />
           <Route
-            path="/admin/create-user"
-            element={
-              <ProtectedRoute requiredRole="Admin">
-                <CreateUser />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/edit-user/:userId"
-            element={
-              <ProtectedRoute requiredRole="Admin">
-                <EditUser />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/admin/exams"
             element={
               <ProtectedRoute requiredRole="Admin">
                 <ExamManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/exam/:examId"
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <AdminExamDetail />
               </ProtectedRoute>
             }
           />

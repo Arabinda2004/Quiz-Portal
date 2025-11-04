@@ -26,7 +26,7 @@ export default function SystemReports() {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('users')
 
   useEffect(() => {
     loadReports()
@@ -106,9 +106,9 @@ export default function SystemReports() {
       </PageHeader>
 
       <Tabs>
-        <Tab active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
+        {/* <Tab active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
           Overview
-        </Tab>
+        </Tab> */}
         <Tab active={activeTab === 'users'} onClick={() => setActiveTab('users')}>
           User Details
         </Tab>
@@ -117,7 +117,7 @@ export default function SystemReports() {
         </Tab>
       </Tabs>
 
-      <TabContent active={activeTab === 'overview'}>
+      {/* <TabContent active={activeTab === 'overview'}>
         <Card>
           <h2 style={{ marginTop: 0 }}>System Overview</h2>
 
@@ -162,7 +162,7 @@ export default function SystemReports() {
             </StatCard>
           </StatGrid>
         </Card>
-      </TabContent>
+      </TabContent> */}
 
       <TabContent active={activeTab === 'users'}>
         <Card>
@@ -227,7 +227,7 @@ export default function SystemReports() {
                     <th>Creator</th>
                     <th>Total Marks</th>
                     <th>Duration (mins)</th>
-                    <th>Schedule Start</th>
+                    <th>Date</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -241,7 +241,7 @@ export default function SystemReports() {
                       <td>{exam.totalMarks}</td>
                       <td>{exam.durationMinutes}</td>
                       <td>{new Date(exam.scheduleStart).toLocaleDateString()}</td>
-                      <td>{exam.isPublished ? 'Published' : 'Draft'}</td>
+                      <td>{exam.status}</td>
                     </tr>
                   ))}
                 </tbody>

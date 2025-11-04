@@ -209,8 +209,6 @@ export default function ExamForm() {
     // accessCode: '',
     accessPassword: '',
     durationMinutes: 60,
-    allowNegativeMarks: false,
-    negativeMarkPercentage: 0,
   })
 
   const [validationErrors, setValidationErrors] = useState({})
@@ -243,8 +241,6 @@ export default function ExamForm() {
         // accessCode: exam.accessCode || '',
         accessPassword: exam.accessPassword || '',
         durationMinutes: exam.durationMinutes || 60,
-        allowNegativeMarks: exam.allowNegativeMarks || false,
-        negativeMarkPercentage: exam.negativeMarkPercentage || 0,
       })
     } catch (err) {
       setError('Failed to load exam data')
@@ -560,36 +556,6 @@ export default function ExamForm() {
               )}
               <Helper>Maximum time students have to complete the exam</Helper>
             </FormGroup>
-
-            {/* Negative Marks */}
-            <FormGroup>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  name="allowNegativeMarks"
-                  checked={formData.allowNegativeMarks}
-                  onChange={handleInputChange}
-                />
-                <span>Allow Negative Marks</span>
-              </label>
-              <Helper>Check this if you want to penalize wrong answers</Helper>
-            </FormGroup>
-
-            {formData.allowNegativeMarks && (
-              <FormGroup>
-                <Label htmlFor="negativeMarkPercentage">Negative Mark Percentage</Label>
-                <Input
-                  id="negativeMarkPercentage"
-                  type="number"
-                  name="negativeMarkPercentage"
-                  value={formData.negativeMarkPercentage}
-                  onChange={handleInputChange}
-                  min="0"
-                  max="100"
-                />
-                <Helper>Percentage of marks to deduct for each wrong answer</Helper>
-              </FormGroup>
-            )}
 
             {/* Buttons */}
             <ButtonGroup>

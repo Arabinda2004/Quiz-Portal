@@ -42,7 +42,7 @@ export default function ExamManagement() {
   }
 
   const handleViewExam = examId => {
-    navigate(`/teacher/exam/${examId}`)
+    navigate(`/admin/exam/${examId}`)
   }
 
   // Filter exams

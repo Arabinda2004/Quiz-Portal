@@ -1,3 +1,5 @@
+// User controller 
+
 using Microsoft.AspNetCore.Mvc;
 using QuizPortalAPI.DTOs.User;
 using QuizPortalAPI.DTOs.Auth;

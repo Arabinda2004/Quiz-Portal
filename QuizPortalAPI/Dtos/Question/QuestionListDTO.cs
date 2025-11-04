@@ -14,8 +14,6 @@ namespace QuizPortalAPI.DTOs.Question
 
         public decimal Marks { get; set; }
 
-        public decimal NegativeMarks { get; set; }
-
         public int OptionCount { get; set; }  // Number of options (for MCQ)
 
         public DateTime CreatedAt { get; set; }

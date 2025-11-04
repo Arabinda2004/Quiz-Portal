@@ -28,8 +28,6 @@ namespace QuizPortalAPI.DTOs.Exam
 
         public decimal PassingMarks { get; set; }  // Computed from TotalMarks * PassingPercentage
 
-        public bool HasNegativeMarking { get; set; }
-
         public string AccessCode { get; set; } = string.Empty;
 
         // ✅ Password should NOT be returned to frontend for security
