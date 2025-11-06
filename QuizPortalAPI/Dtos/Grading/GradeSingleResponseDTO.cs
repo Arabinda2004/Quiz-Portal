@@ -13,7 +13,6 @@ namespace QuizPortalAPI.DTOs.Grading
 
         [StringLength(500, ErrorMessage = "Comment cannot exceed 500 characters")]
         public string? Comment { get; set; }
-
         public bool IsPartialCredit { get; set; } = false;
     }
 }

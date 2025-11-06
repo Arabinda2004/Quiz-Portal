@@ -1,12 +1,13 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using QuizPortalAPI.Data;
 using QuizPortalAPI.DTOs.Auth;
 using QuizPortalAPI.Models;
+using QuizPortalAPI.Helpers;
+
 
 namespace QuizPortalAPI.Services
 {
@@ -16,24 +17,26 @@ namespace QuizPortalAPI.Services
         private readonly ILogger<AuthService> _logger;
         private readonly IConfiguration _configuration;
         private readonly IUserService _userService;
+        private readonly AuthHelper _jwtHelper;
 
         public AuthService(
             AppDbContext context,
             ILogger<AuthService> logger,
             IConfiguration configuration,
-            IUserService userService)
+            IUserService userService,
+            AuthHelper jwtHelper)
         {
             _context = context;
             _logger = logger;
             _configuration = configuration;
             _userService = userService;
+            _jwtHelper = jwtHelper;
         }
 
         public async Task<AuthResponseDTO> LoginAsync(LoginDTO loginDTO)
         {
             try
             {
-                // Find user by email
                 var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginDTO.Email);
                 if (user == null)
                 {
@@ -45,7 +48,6 @@ namespace QuizPortalAPI.Services
                     };
                 }
 
-                // Verify password
                 if (!BCrypt.Net.BCrypt.Verify(loginDTO.Password, user.Password))
                 {
                     _logger.LogWarning($"Failed login attempt for user: {user.Email}");
@@ -56,8 +58,7 @@ namespace QuizPortalAPI.Services
                     };
                 }
 
-                // Generate access token
-                var accessToken = GenerateAccessToken(user);
+                var accessToken = _jwtHelper.GenerateAccessToken(user);
 
                 var userInfo = new UserInfoDTO
                 {
@@ -96,7 +97,6 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                // Check if email already exists 
                 if (await _userService.UserExistsByEmailAsync(registerDTO.Email))
                 {
                     _logger.LogWarning($"Registration attempt with existing email: {registerDTO.Email}");
@@ -107,7 +107,6 @@ namespace QuizPortalAPI.Services
                     };
                 }
 
-                // Parse role from DTO (Teacher or Student)
                 if (!Enum.TryParse<UserRole>(registerDTO.Role, out var userRole) || 
                     userRole == UserRole.Admin)
                 {
@@ -119,24 +118,22 @@ namespace QuizPortalAPI.Services
                     };
                 }
 
-                // Create new user with selected role
                 var user = new User
                 {
                     FullName = registerDTO.FullName,
                     Email = registerDTO.Email,
                     Password = BCrypt.Net.BCrypt.HashPassword(registerDTO.Password),
-                    Role = userRole,  // Use role from registration request
+                    Role = userRole,
                     IsDefaultPassword = false,
                     CreatedAt = DateTime.UtcNow
                 };
 
-                _context.Users.Add(user); 
+                _context.Users.Add(user);  
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation($"New user registered as {userRole}: {user.Email}");
 
-                // Generate access token for auto-login after registration
-                var accessToken = GenerateAccessToken(user);
+                var accessToken = _jwtHelper.GenerateAccessToken(user);
 
                 var userInfo = new UserInfoDTO
                 {
@@ -184,7 +181,6 @@ namespace QuizPortalAPI.Services
                     };
                 }
 
-                // Verify current password
                 if (!BCrypt.Net.BCrypt.Verify(changePasswordDTO.CurrentPassword, user.Password))
                 {
                     _logger.LogWarning($"Incorrect current password for user: {user.Email}");
@@ -195,7 +191,6 @@ namespace QuizPortalAPI.Services
                     };
                 }
 
-                // Update password
                 user.Password = BCrypt.Net.BCrypt.HashPassword(changePasswordDTO.NewPassword);
                 user.IsDefaultPassword = false;
 
@@ -293,37 +288,6 @@ namespace QuizPortalAPI.Services
                 _logger.LogError($"Error extracting user from token: {ex.Message}");
                 return null;
             }
-        }
-       
-        // Access token and refresh token generations
-        private string GenerateAccessToken(User user)
-        {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["JwtSettings:SecretKey"] ?? "");
-
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Name, user.FullName),
-                new Claim(ClaimTypes.Role, user.Role.ToString()),
-                new Claim("IsDefaultPassword", user.IsDefaultPassword.ToString())
-            };
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(
-                    int.Parse(_configuration["JwtSettings:ExpirationMinutes"] ?? "60")),
-                Issuer = _configuration["JwtSettings:Issuer"],
-                Audience = _configuration["JwtSettings:Audience"],
-                SigningCredentials = new SigningCredentials(
-                    new SymmetricSecurityKey(key),
-                    SecurityAlgorithms.HmacSha256Signature)
-            };
-
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
         }
     }
 }

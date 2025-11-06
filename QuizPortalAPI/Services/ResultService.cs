@@ -1098,7 +1098,6 @@ namespace QuizPortalAPI.Services
             };
         }
 
-        // ============ EXAM PUBLICATION METHODS ============
 
         /// <summary>
         /// Check if all responses for an exam are graded

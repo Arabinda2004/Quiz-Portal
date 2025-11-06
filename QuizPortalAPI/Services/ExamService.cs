@@ -712,6 +712,18 @@ namespace QuizPortalAPI.Services
                     };
                 }
 
+                if (exam.ScheduleEnd - now < TimeSpan.FromMinutes(exam.DurationMinutes))
+                {
+                    _logger.LogInformation($"Insufficient time remaining to start exam {exam.ExamID}");
+                    return new ExamAccessResponseDTO
+                    {
+                        ExamID = exam.ExamID,
+                        Title = exam.Title,
+                        CanAttempt = false,
+                        Message = "Insufficient time remaining to start the exam"
+                    };
+                }
+
                 // Exam is active and accessible
                 _logger.LogInformation($"Student granted access to exam {exam.ExamID}");
                 return new ExamAccessResponseDTO

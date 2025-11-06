@@ -18,10 +18,6 @@ namespace QuizPortalAPI.Services
         // Teacher/Admin operations for viewing responses
         Task<StudentAttemptsResponseDTO> GetAllStudentAttemptsAsync(int examId, int page, int pageSize);
 
-        Task<QuestionResponsesPagedDTO> GetExamResponsesByQuestionPagedAsync(int questionId, int examId, int page, int pageSize);
-
-        Task<QuestionStatisticsDTO> GetQuestionStatisticsAsync(int questionId, int examId);
-
         Task<ExamStatisticsDTO> GetExamStatisticsAsync(int examId);
 
         // Utility methods

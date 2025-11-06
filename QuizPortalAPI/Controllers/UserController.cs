@@ -31,11 +31,6 @@ namespace QuizPortalAPI.Controllers
 
         [HttpGet("{id}")]
         [Authorize(Roles = "Admin")] 
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<UserResponseDTO>> GetUserById(int id)
         {
             try
@@ -60,11 +55,6 @@ namespace QuizPortalAPI.Controllers
 
         [HttpGet("by-email/{email}")]
         [Authorize]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<UserResponseDTO>> GetUserByEmail(string email)
         {
             try
@@ -93,10 +83,6 @@ namespace QuizPortalAPI.Controllers
         //  SECURED: Users can only get their own profile
         [HttpGet("profile")]
         [Authorize]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<UserResponseDTO>> GetProfile()
         {
             try
@@ -123,12 +109,6 @@ namespace QuizPortalAPI.Controllers
         //  SECURED: Users can only update their own profile
         [HttpPut("profile")]
         [Authorize]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<UserResponseDTO>> UpdateProfile([FromBody] UpdateUserDTO updateUserDTO)
         {
             try
@@ -167,10 +147,6 @@ namespace QuizPortalAPI.Controllers
         //  SECURED: Users can only change their own password
         [HttpPut("change-password")]
         [Authorize]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult> ChangePassword([FromBody] ChangePasswordDTO changePasswordDTO)
         {
             try
@@ -208,11 +184,6 @@ namespace QuizPortalAPI.Controllers
         //  SECURED: Users can only delete their own account with password confirmation
         [HttpDelete("profile")]
         [Authorize]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountDTO deleteAccountDTO)
         {
             try

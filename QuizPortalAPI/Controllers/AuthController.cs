@@ -2,12 +2,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuizPortalAPI.DTOs.Auth;
 using QuizPortalAPI.Services;
-using System.Security.Claims;
 
 namespace QuizPortalAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/auth")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -19,21 +18,12 @@ namespace QuizPortalAPI.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// POST: api/auth/register
-        /// Register new user (Teacher/Student)
-        /// </summary>
         [HttpPost("register")]
-        [AllowAnonymous]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<AuthResponseDTO>> Register([FromBody] RegisterDTO registerDTO)
         {
             try
             {
-                if (!ModelState.IsValid) // keeps track of validation errors
+                if (!ModelState.IsValid)
                 {
                     _logger.LogWarning("Invalid registration request");
                     return BadRequest(ModelState);
@@ -44,10 +34,9 @@ namespace QuizPortalAPI.Controllers
                 if (!result.Success)
                 {
                     _logger.LogWarning($"Registration failed for email: {registerDTO.Email}");
-                    return Conflict(result);
+                    return Conflict(result); // if email already exists or role invalid
                 }
 
-                // Set JWT token in HttpOnly cookie
                 SetAuthCookies(result.AccessToken);
 
                 _logger.LogInformation($"New user registered: {registerDTO.Email}");
@@ -65,16 +54,7 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        /// <summary>
-        /// POST: api/auth/login
-        /// Authenticate user and return JWT token
-        /// </summary>
         [HttpPost("login")]
-        [AllowAnonymous]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<AuthResponseDTO>> Login([FromBody] LoginDTO loginDTO)
         {
             try
@@ -93,7 +73,6 @@ namespace QuizPortalAPI.Controllers
                     return Unauthorized(result);
                 }
 
-                // Set JWT token in HttpOnly cookie
                 SetAuthCookies(result.AccessToken);
 
                 _logger.LogInformation($"User logged in successfully: {loginDTO.Email}");
@@ -111,19 +90,12 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        /// <summary>
-        /// POST: api/auth/logout
-        /// Clear JWT cookies
-        /// </summary>
         [HttpPost("logout")]
         [Authorize]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public IActionResult Logout()
         {
             try
             {
-                // Clear cookie
                 Response.Cookies.Delete("accessToken");
 
                 _logger.LogInformation("User logged out successfully");
@@ -137,9 +109,6 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        /// <summary>
-        /// Helper method to set JWT access token in HttpOnly cookie
-        /// </summary>
         private void SetAuthCookies(string? accessToken)
         {
             if (string.IsNullOrEmpty(accessToken))
@@ -154,14 +123,6 @@ namespace QuizPortalAPI.Controllers
             };
 
             Response.Cookies.Append("accessToken", accessToken, accessTokenCookieOptions);
-        }
-
-        /// <summary>
-        /// Helper method to clear JWT cookies
-        /// </summary>
-        private void ClearAuthCookies()
-        {
-            Response.Cookies.Delete("accessToken");
         }
     }
 }

@@ -24,20 +24,15 @@ namespace QuizPortalAPI.DTOs.Exam
 
         public decimal PassingPercentage { get; set; }
 
-        public decimal TotalMarks { get; set; }  // Computed from questions
+        public decimal TotalMarks { get; set; }  
 
-        public decimal PassingMarks { get; set; }  // Computed from TotalMarks * PassingPercentage
+        public decimal PassingMarks { get; set; }  
 
         public string AccessCode { get; set; } = string.Empty;
 
-        // ✅ Password should NOT be returned to frontend for security
-        // public string AccessPassword { get; set; }  // REMOVED for security
-
         public DateTime CreatedAt { get; set; }
 
-        // public DateTime? UpdatedAt { get; set; }
-
-        public bool IsActive { get; set; }  // True if current time is between ScheduleStart and ScheduleEnd
+        public bool IsActive { get; set; } 
 
         public TimeSpan? TimeUntilStart { get; set; }
 

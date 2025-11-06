@@ -23,14 +23,9 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                // Validate input
-                if (createQuestionDTO == null)
-                    throw new ArgumentNullException(nameof(createQuestionDTO));
-
                 if (string.IsNullOrWhiteSpace(createQuestionDTO.QuestionText))
                     throw new InvalidOperationException("Question text is required");
 
-                // Verify exam exists and user is owner
                 var exam = await _context.Exams.FindAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
@@ -41,7 +36,6 @@ namespace QuizPortalAPI.Services
                     throw new UnauthorizedAccessException("You can only add questions to your own exams");
                 }
 
-                // Check if exam has started (can only add questions to upcoming exams)
                 var now = DateTime.UtcNow;
                 if (now >= exam.ScheduleStart)
                 {
@@ -49,13 +43,9 @@ namespace QuizPortalAPI.Services
                     throw new InvalidOperationException("Questions can only be added to upcoming exams. Once an exam starts, no new questions can be added.");
                 }
 
-                // Validate marks
                 if (createQuestionDTO.Marks <= 0)
                     throw new InvalidOperationException("Marks must be greater than 0");
 
-                // Note: No validation for total marks limit since TotalMarks is now dynamically calculated from questions
-
-                // Validate options for MCQ
                 if (createQuestionDTO.QuestionType == QuestionType.MCQ)
                 {
                     if (createQuestionDTO.Options == null || createQuestionDTO.Options.Count != 4)
@@ -70,7 +60,6 @@ namespace QuizPortalAPI.Services
                     throw new InvalidOperationException($"Only MCQ questions can have options");
                 }
 
-                // Create question entity
                 var question = new Question
                 {
                     ExamID = examId,
@@ -81,7 +70,6 @@ namespace QuizPortalAPI.Services
                     CreatedAt = DateTime.UtcNow
                 };
 
-                // Add options if MCQ
                 if (createQuestionDTO.QuestionType == QuestionType.MCQ && createQuestionDTO.Options != null)
                 {
                     question.Options = createQuestionDTO.Options.Select(opt => new QuestionOption
@@ -97,11 +85,6 @@ namespace QuizPortalAPI.Services
 
                 _logger.LogInformation($"Question {question.QuestionID} created for exam {examId} by teacher {teacherId}");
                 return MapToQuestionResponseDTO(question);
-            }
-            catch (ArgumentNullException ex)
-            {
-                _logger.LogError($"Validation error: {ex.Message}");
-                throw;
             }
             catch (InvalidOperationException ex)
             {
@@ -234,7 +217,7 @@ namespace QuizPortalAPI.Services
                     if (question.QuestionType != QuestionType.MCQ)
                         throw new InvalidOperationException("Only MCQ questions can have options");
 
-                    // FIX: Null-coalesce Options to empty list
+
                     var currentOptions = question.Options ?? new List<QuestionOption>();
 
                     // Remove options that are not in the update list
@@ -365,11 +348,6 @@ namespace QuizPortalAPI.Services
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning($"Unauthorized deletion: {ex.Message}");
-                throw;
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning($"Invalid operation: {ex.Message}");
                 throw;
             }
             catch (Exception ex)

@@ -24,12 +24,10 @@ namespace QuizPortalAPI.Controllers
             _responseService = responseService;
         }
 
-        private int GetLoggedInUserId()
+        private int? GetLoggedInUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out var userId))
-                return userId;
-            return 0;
+            return int.TryParse(userIdClaim, out var userId) ? userId : (int?)null;
         }
 
         /// <summary>
@@ -38,10 +36,6 @@ namespace QuizPortalAPI.Controllers
         /// </summary>
         [HttpGet("users")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<IEnumerable<UserResponseDTO>>> GetAllUsers()
         {
             try
@@ -64,11 +58,6 @@ namespace QuizPortalAPI.Controllers
         /// </summary>
         [HttpGet("users/{id}")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<UserResponseDTO>> GetUserById(int id)
         {
             try
@@ -97,26 +86,17 @@ namespace QuizPortalAPI.Controllers
         /// </summary>
         [HttpGet("exams/{examId}/responses/statistics")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetExamStatistics(int examId)
         {
             try
             {
-                // Validate input
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
                 var adminId = GetLoggedInUserId();
-                if (adminId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (adminId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-
-                // ✅ Get exam statistics
                 var stats = await _responseService.GetExamStatisticsAsync(examId);
 
                 _logger.LogInformation($"Admin {adminId} retrieved statistics for exam {examId}");
@@ -137,11 +117,6 @@ namespace QuizPortalAPI.Controllers
         /// </summary>
         [HttpGet("exams/{id}")]
         [Authorize(Roles = "Admin")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetExamById(int id)
         {
             try
@@ -150,10 +125,9 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "Invalid exam ID" });
 
                 var adminId = GetLoggedInUserId();
-                if (adminId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
-
-                // Get exam
+                if (adminId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                
                 var exam = await _examService.GetExamByIdAsync(id);
                 if (exam == null)
                     return NotFound(new { message = "Exam not found" });

@@ -187,7 +187,7 @@ export const teacherService = {
   getStudentResponses: async (examId, studentId) => {
     try {
       const response = await api.get(`/teacher/exams/${examId}/responses/students/${studentId}`)
-      console.log("++++++++++++")
+      // console.log("++++++++++++")
       console.log(response.data)
       return response.data
     } catch (error) {
@@ -196,16 +196,16 @@ export const teacherService = {
     }
   },
 
-  getQuestionResponses: async (examId, questionId, page = 1, pageSize = 10) => {
-    try {
-      const response = await api.get(`/teacher/exams/${examId}/responses/questions/${questionId}/all`, {
-        params: { page, pageSize },
-      })
-      return response.data
-    } catch (error) {
-      throw error.response?.data || error.message
-    }
-  },
+  // getQuestionResponses: async (examId, questionId, page = 1, pageSize = 10) => {
+  //   try {
+  //     const response = await api.get(`/teacher/exams/${examId}/responses/questions/${questionId}/all`, {
+  //       params: { page, pageSize },
+  //     })
+  //     return response.data
+  //   } catch (error) {
+  //     throw error.response?.data || error.message
+  //   }
+  // },
 
   // Statistics
   getExamStatistics: async (examId) => {
@@ -219,16 +219,16 @@ export const teacherService = {
     }
   },
 
-  getQuestionStatistics: async (examId, questionId) => {
-    try {
-      const response = await api.get(`/teacher/exams/${examId}/responses/questions/${questionId}/statistics`)
-      console.log(`Question Statistics Response for questionId ${questionId}:`, response.data)
-      return response.data
-    } catch (error) {
-      console.error(`Error fetching question statistics:`, error)
-      throw error.response?.data || error.message
-    }
-  },
+  // getQuestionStatistics: async (examId, questionId) => {
+  //   try {
+  //     const response = await api.get(`/teacher/exams/${examId}/responses/questions/${questionId}/statistics`)
+  //     console.log(`Question Statistics Response for questionId ${questionId}:`, response.data)
+  //     return response.data
+  //   } catch (error) {
+  //     console.error(`Error fetching question statistics:`, error)
+  //     throw error.response?.data || error.message
+  //   }
+  // },
 
   // Grading Methods (for grading pending responses)
   getPendingResponses: async (examId, page = 1, pageSize = 10) => {
@@ -281,8 +281,6 @@ export const teacherService = {
   gradeSingleResponse: async (responseId, data) => {
     try {
       const response = await api.post(`/teacher/grading/responses/${responseId}/grade`, data)
-      // console.log("~~~~~~~~~~~~~~~~~~~")
-      // console.log(response.data)
       return response.data
     } catch (error) {
       throw error.response?.data || error.message
@@ -318,14 +316,14 @@ export const teacherService = {
     }
   },
 
-  getStudentGradedResponses: async (examId, studentId) => {
-    try {
-      const response = await api.get(`/teacher/grading/exams/${examId}/students/${studentId}/graded-responses`)
-      return response.data
-    } catch (error) {
-      throw error.response?.data || error.message
-    }
-  },
+  // getStudentGradedResponses: async (examId, studentId) => {
+  //   try {
+  //     const response = await api.get(`/teacher/grading/exams/${examId}/students/${studentId}/graded-responses`)
+  //     return response.data
+  //   } catch (error) {
+  //     throw error.response?.data || error.message
+  //   }
+  // },
 
   regradeResponse: async (responseId, data) => {
     try {

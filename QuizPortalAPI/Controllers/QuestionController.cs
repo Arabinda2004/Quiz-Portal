@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuizPortalAPI.DTOs.Question;
+using QuizPortalAPI.Models;
 using QuizPortalAPI.Services;
 using System.Security.Claims;
 
@@ -25,12 +26,10 @@ namespace QuizPortalAPI.Controllers
         /// <summary>
         /// Get logged-in user's ID from JWT token
         /// </summary>
-        private int GetLoggedInUserId()
+        private int? GetLoggedInUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out var userId))
-                return userId;
-            return 0;
+            return int.TryParse(userIdClaim, out var userId) ? userId : (int?)null;
         }
 
         /// <summary>
@@ -38,17 +37,10 @@ namespace QuizPortalAPI.Controllers
         /// POST /api/exams/{examId}/questions
         /// </summary>
         [HttpPost]
-        [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateQuestion(int examId, [FromBody] CreateQuestionDTO createQuestionDTO)
         {
             try
             {
-                // Validate input
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
@@ -59,20 +51,14 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(ModelState);
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // Create question
-                var createdQuestion = await _questionService.CreateQuestionAsync(examId, teacherId, createQuestionDTO);
+                var createdQuestion = await _questionService.CreateQuestionAsync(examId, teacherId.Value, createQuestionDTO);
 
                 _logger.LogInformation($"Question created for exam {examId} by teacher {teacherId}");
                 return CreatedAtAction(nameof(GetQuestionById), new { examId, id = createdQuestion.QuestionID },
                     new { message = "Question created successfully", data = createdQuestion });
-            }
-            catch (ArgumentNullException ex)
-            {
-                _logger.LogWarning($"Validation error: {ex.Message}");
-                return BadRequest(new { message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
@@ -97,36 +83,30 @@ namespace QuizPortalAPI.Controllers
         /// GET /api/exams/{examId}/questions
         /// </summary>
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetExamQuestions(int examId)
         {
             try
             {
-                // ✅ Validate input
+                // Validate input
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // ✅ Verify teacher owns the exam
-                var isOwner = await _questionService.IsExamOwnerAsync(examId, teacherId);
+                // Verify teacher owns the exam
+                var isOwner = await _questionService.IsExamOwnerAsync(examId, teacherId.Value);
                 if (!isOwner)
                 {
                     _logger.LogWarning($"Teacher {teacherId} attempted to access questions for exam {examId} they don't own");
                     return Forbid();
                 }
 
-                // ✅ Get questions
+                // Get questions
                 var questions = await _questionService.GetExamQuestionsAsync(examId);
 
-                // ✅ Get exam stats
+                // Get exam stats
                 var questionCount = questions.Count();
                 var totalMarks = await _questionService.GetExamTotalMarksAsync(examId);
 
@@ -151,33 +131,29 @@ namespace QuizPortalAPI.Controllers
         /// GET /api/exams/{examId}/questions/{id}
         /// </summary>
         [HttpGet("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetQuestionById(int examId, int id)
         {
             try
             {
-                // ✅ Validate input
+
                 if (examId <= 0 || id <= 0)
-                    return BadRequest(new { message = "Invalid exam or question ID" });
+                {
+                    return BadRequest(new { message = "Invalid exam or question ID" }); 
+                }
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                {
+                    return Unauthorized(new { message = "Invalid or missing User Id" });
+                }
 
-                // ✅ Verify teacher owns the exam
-                var isOwner = await _questionService.IsExamOwnerAsync(examId, teacherId);
+                var isOwner = await _questionService.IsExamOwnerAsync(examId, teacherId.Value);
                 if (!isOwner)
                 {
                     _logger.LogWarning($"Teacher {teacherId} attempted to access question from exam {examId} they don't own");
                     return Forbid();
                 }
 
-                // ✅ Get question
                 var question = await _questionService.GetQuestionByIdAsync(id);
                 if (question == null)
                 {
@@ -185,7 +161,6 @@ namespace QuizPortalAPI.Controllers
                     return NotFound(new { message = "Question not found" });
                 }
 
-                // ✅ Verify question belongs to this exam
                 if (question.ExamID != examId)
                 {
                     _logger.LogWarning($"Question {id} does not belong to exam {examId}");
@@ -208,17 +183,11 @@ namespace QuizPortalAPI.Controllers
         /// PUT /api/exams/{examId}/questions/{id}
         /// </summary>
         [HttpPut("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateQuestion(int examId, int id, [FromBody] UpdateQuestionDTO updateQuestionDTO)
         {
             try
             {
-                // ✅ Validate input
+                // Validate input
                 if (examId <= 0 || id <= 0)
                     return BadRequest(new { message = "Invalid exam or question ID" });
 
@@ -229,31 +198,31 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(ModelState);
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // ✅ Verify teacher owns the exam
-                var isExamOwner = await _questionService.IsExamOwnerAsync(examId, teacherId);
+                // Verify teacher owns the exam
+                var isExamOwner = await _questionService.IsExamOwnerAsync(examId, teacherId.Value);
                 if (!isExamOwner)
                 {
                     _logger.LogWarning($"Teacher {teacherId} attempted to update question in exam {examId} they don't own");
                     return Forbid();
                 }
 
-                // ✅ Verify teacher owns the question
-                var isQuestionOwner = await _questionService.IsTeacherQuestionOwnerAsync(id, teacherId);
+                // Verify teacher owns the question
+                var isQuestionOwner = await _questionService.IsTeacherQuestionOwnerAsync(id, teacherId.Value);
                 if (!isQuestionOwner)
                 {
                     _logger.LogWarning($"Teacher {teacherId} attempted to update question {id} they don't own");
                     return Forbid();
                 }
 
-                // ✅ Update question
-                var updatedQuestion = await _questionService.UpdateQuestionAsync(id, teacherId, updateQuestionDTO);
+                // Update question
+                var updatedQuestion = await _questionService.UpdateQuestionAsync(id, teacherId.Value, updateQuestionDTO);
                 if (updatedQuestion == null)
                     return NotFound(new { message = "Question not found" });
 
-                // ✅ Verify updated question belongs to this exam
+                // Verify updated question belongs to this exam
                 if (updatedQuestion.ExamID != examId)
                     return NotFound(new { message = "Question not found in this exam" });
 
@@ -288,42 +257,36 @@ namespace QuizPortalAPI.Controllers
         /// DELETE /api/exams/{examId}/questions/{id}
         /// </summary>
         [HttpDelete("{id}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> DeleteQuestion(int examId, int id)
         {
             try
             {
-                // ✅ Validate input
+                // Validate input
                 if (examId <= 0 || id <= 0)
                     return BadRequest(new { message = "Invalid exam or question ID" });
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // ✅ Verify teacher owns the exam
-                var isExamOwner = await _questionService.IsExamOwnerAsync(examId, teacherId);
+                // Verify teacher owns the exam
+                var isExamOwner = await _questionService.IsExamOwnerAsync(examId, teacherId.Value);
                 if (!isExamOwner)
                 {
                     _logger.LogWarning($"Teacher {teacherId} attempted to delete question from exam {examId} they don't own");
                     return Forbid();
                 }
 
-                // ✅ Verify teacher owns the question
-                var isQuestionOwner = await _questionService.IsTeacherQuestionOwnerAsync(id, teacherId);
+                // Verify teacher owns the question
+                var isQuestionOwner = await _questionService.IsTeacherQuestionOwnerAsync(id, teacherId.Value);
                 if (!isQuestionOwner)
                 {
                     _logger.LogWarning($"Teacher {teacherId} attempted to delete question {id} they don't own");
                     return Forbid();
                 }
 
-                // ✅ Delete question
-                var result = await _questionService.DeleteQuestionAsync(id, teacherId);
+                // Delete question
+                var result = await _questionService.DeleteQuestionAsync(id, teacherId.Value);
                 if (!result)
                     return NotFound(new { message = "Question not found" });
 
@@ -348,32 +311,24 @@ namespace QuizPortalAPI.Controllers
         /// GET /api/exams/{examId}/questions/stats
         /// </summary>
         [HttpGet("stats")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetExamStats(int examId)
         {
             try
             {
-                // ✅ Validate input
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // ✅ Verify teacher owns the exam
-                var isOwner = await _questionService.IsExamOwnerAsync(examId, teacherId);
+                var isOwner = await _questionService.IsExamOwnerAsync(examId, teacherId.Value);
                 if (!isOwner)
                 {
                     _logger.LogWarning($"Teacher {teacherId} attempted to access stats for exam {examId} they don't own");
                     return Forbid();
                 }
 
-                // ✅ Get stats
                 var questionCount = await _questionService.GetExamQuestionCountAsync(examId);
                 var totalMarks = await _questionService.GetExamTotalMarksAsync(examId);
 

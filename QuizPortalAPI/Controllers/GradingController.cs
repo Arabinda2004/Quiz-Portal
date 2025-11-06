@@ -22,15 +22,10 @@ namespace QuizPortalAPI.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// Get logged-in user's ID from JWT token
-        /// </summary>
-        private int GetLoggedInUserId()
+        private int? GetLoggedInUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out var userId))
-                return userId;
-            return 0;
+            return int.TryParse(userIdClaim, out var userId) ? userId : (int?)null;
         }
 
         /// <summary>
@@ -38,12 +33,6 @@ namespace QuizPortalAPI.Controllers
         /// GET /api/teacher/grading/exams/{examId}/pending
         /// </summary>
         [HttpGet("exams/{examId}/pending")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetPendingResponses(int examId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
@@ -52,10 +41,10 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "Invalid exam ID" });
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var pendingResponses = await _gradingService.GetPendingResponsesAsync(examId, teacherId, page, pageSize);
+                var pendingResponses = await _gradingService.GetPendingResponsesAsync(examId, teacherId.Value, page, pageSize);
 
                 _logger.LogInformation($"Teacher {teacherId} retrieved pending responses for exam {examId}");
                 return Ok(new
@@ -82,52 +71,46 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        /// <summary>
-        /// Get pending responses for a specific question
-        /// GET /api/teacher/grading/exams/{examId}/questions/{questionId}/pending
-        /// </summary>
-        [HttpGet("exams/{examId}/questions/{questionId}/pending")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetPendingResponsesByQuestion(int examId, int questionId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                if (examId <= 0 || questionId <= 0)
-                    return BadRequest(new { message = "Invalid exam or question ID" });
+        // /// <summary>
+        // /// Get pending responses for a specific question
+        // /// GET /api/teacher/grading/exams/{examId}/questions/{questionId}/pending
+        // /// </summary>
+        // [HttpGet("exams/{examId}/questions/{questionId}/pending")]
+        // public async Task<IActionResult> GetPendingResponsesByQuestion(int examId, int questionId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        // {
+        //     try
+        //     {
+        //         if (examId <= 0 || questionId <= 0)
+        //             return BadRequest(new { message = "Invalid exam or question ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+        //         var teacherId = GetLoggedInUserId();
+        //         if (teacherId == null)
+        //             return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var pendingResponses = await _gradingService.GetPendingResponsesByQuestionAsync(examId, questionId, teacherId, page, pageSize);
+        //         var pendingResponses = await _gradingService.GetPendingResponsesByQuestionAsync(examId, questionId, teacherId.Value, page, pageSize);
 
-                _logger.LogInformation($"Teacher {teacherId} retrieved pending responses for question {questionId}");
-                return Ok(new
-                {
-                    success = true,
-                    data = pendingResponses
-                });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (InvalidOperationException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving pending responses by question: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while retrieving pending responses" });
-            }
-        }
+        //         _logger.LogInformation($"Teacher {teacherId} retrieved pending responses for question {questionId}");
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             data = pendingResponses
+        //         });
+        //     }
+        //     catch (UnauthorizedAccessException)
+        //     {
+        //         return Forbid();
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         return NotFound(new { message = ex.Message });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving pending responses by question: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while retrieving pending responses" });
+        //     }
+        // }
 
         /// <summary>
         /// Get pending responses for a specific student
@@ -148,10 +131,10 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "Invalid exam or student ID" });
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var pendingResponses = await _gradingService.GetPendingResponsesByStudentAsync(examId, studentId, teacherId, page, pageSize);
+                var pendingResponses = await _gradingService.GetPendingResponsesByStudentAsync(examId, studentId, teacherId.Value, page, pageSize);
 
                 _logger.LogInformation($"Teacher {teacherId} retrieved pending responses for student {studentId}");
                 return Ok(new
@@ -181,12 +164,6 @@ namespace QuizPortalAPI.Controllers
         /// GET /api/teacher/grading/responses/{responseId}
         /// </summary>
         [HttpGet("responses/{responseId}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetResponseForGrading(int responseId)
         {
             try
@@ -195,10 +172,10 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "Invalid response ID" });
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var response = await _gradingService.GetResponseForGradingAsync(responseId, teacherId);
+                var response = await _gradingService.GetResponseForGradingAsync(responseId, teacherId.Value);
                 if (response == null)
                     return NotFound(new { message = "Response not found" });
 
@@ -226,12 +203,6 @@ namespace QuizPortalAPI.Controllers
         /// POST /api/teacher/grading/responses/{responseId}/grade
         /// </summary>
         [HttpPost("responses/{responseId}/grade")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GradeSingleResponse(int responseId, [FromBody] GradeSingleResponseDTO gradeDto)
         {
             try
@@ -243,10 +214,10 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(ModelState);
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var success = await _gradingService.GradeSingleResponseAsync(responseId, teacherId, gradeDto);
+                var success = await _gradingService.GradeSingleResponseAsync(responseId, teacherId.Value, gradeDto);
 
                 _logger.LogInformation($"Teacher {teacherId} graded response {responseId} with {gradeDto.MarksObtained} marks");
                 return Ok(new
@@ -276,106 +247,89 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        /// <summary>
-        /// Grade multiple responses in batch
-        /// POST /api/teacher/grading/batch-grade
-        /// </summary>
-        [HttpPost("batch-grade")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GradeBatchResponses([FromBody] BatchGradeDTO batchGradeDto)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(ModelState);
+        // /// <summary>
+        // /// Grade multiple responses in batch
+        // /// POST /api/teacher/grading/batch-grade
+        // /// </summary>
+        // [HttpPost("batch-grade")]
+        // public async Task<IActionResult> GradeBatchResponses([FromBody] BatchGradeDTO batchGradeDto)
+        // {
+        //     try
+        //     {
+        //         if (!ModelState.IsValid)
+        //             return BadRequest(ModelState);
 
-                if (batchGradeDto.Responses.Count == 0)
-                    return BadRequest(new { message = "At least one response must be provided" });
+        //         if (batchGradeDto.Responses.Count == 0)
+        //             return BadRequest(new { message = "At least one response must be provided" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+        //         var teacherId = GetLoggedInUserId();
+        //         if (teacherId == null)
+        //             return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var success = await _gradingService.GradeBatchResponsesAsync(teacherId, batchGradeDto);
+        //         var success = await _gradingService.GradeBatchResponsesAsync(teacherId.Value, batchGradeDto);
 
-                _logger.LogInformation($"Teacher {teacherId} batch graded {batchGradeDto.Responses.Count} responses");
-                return Ok(new
-                {
-                    success = true,
-                    message = $"{batchGradeDto.Responses.Count} responses graded successfully"
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning($"Validation error: {ex.Message}");
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (InvalidOperationException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error batch grading responses: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while batch grading responses" });
-            }
-        }
+        //         _logger.LogInformation($"Teacher {teacherId} batch graded {batchGradeDto.Responses.Count} responses");
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             message = $"{batchGradeDto.Responses.Count} responses graded successfully"
+        //         });
+        //     }
+        //     catch (ArgumentException ex)
+        //     {
+        //         _logger.LogWarning($"Validation error: {ex.Message}");
+        //         return BadRequest(new { message = ex.Message });
+        //     }
+        //     catch (UnauthorizedAccessException)
+        //     {
+        //         return Forbid();
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         return NotFound(new { message = ex.Message });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error batch grading responses: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while batch grading responses" });
+        //     }
+        // }
 
-        /// <summary>
-        /// Get grading history for a response
-        /// GET /api/teacher/grading/responses/{responseId}/history
-        /// </summary>
-        [HttpGet("responses/{responseId}/history")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetGradingHistory(int responseId)
-        {
-            try
-            {
-                if (responseId <= 0)
-                    return BadRequest(new { message = "Invalid response ID" });
+        // /// <summary>
+        // /// Get grading history for a response
+        // /// GET /api/teacher/grading/responses/{responseId}/history
+        // /// </summary>
+        // [HttpGet("responses/{responseId}/history")]
+        // public async Task<IActionResult> GetGradingHistory(int responseId)
+        // {
+        //     try
+        //     {
+        //         if (responseId <= 0)
+        //             return BadRequest(new { message = "Invalid response ID" });
 
-                var gradingHistory = await _gradingService.GetGradingHistoryAsync(responseId);
+        //         var gradingHistory = await _gradingService.GetGradingHistoryAsync(responseId);
 
-                _logger.LogInformation($"Retrieved grading history for response {responseId}");
-                return Ok(new
-                {
-                    success = true,
-                    data = gradingHistory
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving grading history: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while retrieving grading history" });
-            }
-        }
+        //         _logger.LogInformation($"Retrieved grading history for response {responseId}");
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             data = gradingHistory
+        //         });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving grading history: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while retrieving grading history" });
+        //     }
+        // }
 
         /// <summary>
         /// Get grading statistics for an exam
         /// GET /api/teacher/grading/exams/{examId}/statistics
         /// </summary>
         [HttpGet("exams/{examId}/statistics")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetGradingStatistics(int examId)
         {
             try
@@ -384,10 +338,10 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "Invalid exam ID" });
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var stats = await _gradingService.GetGradingStatsAsync(examId, teacherId);
+                var stats = await _gradingService.GetGradingStatsAsync(examId, teacherId.Value);
 
                 _logger.LogInformation($"Teacher {teacherId} retrieved grading statistics for exam {examId}");
                 return Ok(new
@@ -412,64 +366,52 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        /// <summary>
-        /// Get all graded responses for a student
-        /// GET /api/teacher/grading/exams/{examId}/students/{studentId}/graded-responses
-        /// </summary>
-        [HttpGet("exams/{examId}/students/{studentId}/graded-responses")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetStudentGradedResponses(int examId, int studentId)
-        {
-            try
-            {
-                if (examId <= 0 || studentId <= 0)
-                    return BadRequest(new { message = "Invalid exam or student ID" });
+        // /// <summary>
+        // /// Get all graded responses for a student
+        // /// GET /api/teacher/grading/exams/{examId}/students/{studentId}/graded-responses
+        // /// </summary>
+        // [HttpGet("exams/{examId}/students/{studentId}/graded-responses")]
+        // public async Task<IActionResult> GetStudentGradedResponses(int examId, int studentId)
+        // {
+        //     try
+        //     {
+        //         if (examId <= 0 || studentId <= 0)
+        //             return BadRequest(new { message = "Invalid exam or student ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+        //         var teacherId = GetLoggedInUserId();
+        //         if (teacherId == null)
+        //             return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var gradedResponses = await _gradingService.GetStudentGradedResponsesAsync(examId, studentId, teacherId);
+        //         var gradedResponses = await _gradingService.GetStudentGradedResponsesAsync(examId, studentId, teacherId.Value);
 
-                _logger.LogInformation($"Teacher {teacherId} retrieved graded responses for student {studentId}");
-                return Ok(new
-                {
-                    success = true,
-                    data = gradedResponses
-                });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (InvalidOperationException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving student graded responses: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while retrieving graded responses" });
-            }
-        }
+        //         _logger.LogInformation($"Teacher {teacherId} retrieved graded responses for student {studentId}");
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             data = gradedResponses
+        //         });
+        //     }
+        //     catch (UnauthorizedAccessException)
+        //     {
+        //         return Forbid();
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         return NotFound(new { message = ex.Message });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving student graded responses: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while retrieving graded responses" });
+        //     }
+        // }
 
         /// <summary>
         /// Regrade a response
         /// POST /api/teacher/grading/responses/{responseId}/regrade
         /// </summary>
         [HttpPost("responses/{responseId}/regrade")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> RegradeResponse(int responseId, [FromBody] RegradingDTO regradingDto)
         {
             try
@@ -481,10 +423,10 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(ModelState);
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var success = await _gradingService.RegradeResponseAsync(responseId, teacherId, regradingDto);
+                var success = await _gradingService.RegradeResponseAsync(responseId, teacherId.Value, regradingDto);
 
                 _logger.LogInformation($"Teacher {teacherId} regraded response {responseId}");
                 return Ok(new
@@ -514,51 +456,45 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        /// <summary>
-        /// Mark a question as fully graded
-        /// PUT /api/teacher/grading/exams/{examId}/questions/{questionId}/mark-graded
-        /// </summary>
-        [HttpPut("exams/{examId}/questions/{questionId}/mark-graded")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> MarkQuestionGraded(int examId, int questionId)
-        {
-            try
-            {
-                if (examId <= 0 || questionId <= 0)
-                    return BadRequest(new { message = "Invalid exam or question ID" });
+        // /// <summary>
+        // /// Mark a question as fully graded
+        // /// PUT /api/teacher/grading/exams/{examId}/questions/{questionId}/mark-graded
+        // /// </summary>
+        // [HttpPut("exams/{examId}/questions/{questionId}/mark-graded")]
+        // public async Task<IActionResult> MarkQuestionGraded(int examId, int questionId)
+        // {
+        //     try
+        //     {
+        //         if (examId <= 0 || questionId <= 0)
+        //             return BadRequest(new { message = "Invalid exam or question ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+        //         var teacherId = GetLoggedInUserId();
+        //         if (teacherId == null)
+        //             return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var success = await _gradingService.MarkQuestionGradedAsync(examId, questionId, teacherId);
+        //         var success = await _gradingService.MarkQuestionGradedAsync(examId, questionId, teacherId.Value);
 
-                _logger.LogInformation($"Teacher {teacherId} marked question {questionId} as graded");
-                return Ok(new
-                {
-                    success = true,
-                    message = "Question marked as graded successfully"
-                });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error marking question as graded: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while marking question as graded" });
-            }
-        }
+        //         _logger.LogInformation($"Teacher {teacherId} marked question {questionId} as graded");
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             message = "Question marked as graded successfully"
+        //         });
+        //     }
+        //     catch (UnauthorizedAccessException)
+        //     {
+        //         return Forbid();
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         return BadRequest(new { message = ex.Message });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error marking question as graded: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while marking question as graded" });
+        //     }
+        // }
     }
 }

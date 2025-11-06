@@ -1,6 +1,7 @@
 using QuizPortalAPI.Data;
 using QuizPortalAPI.Services;
 using QuizPortalAPI.Models;
+using QuizPortalAPI.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -74,6 +75,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 // Register Services (Dependency Injection)
+builder.Services.AddScoped<AuthHelper>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IExamService, ExamService>();

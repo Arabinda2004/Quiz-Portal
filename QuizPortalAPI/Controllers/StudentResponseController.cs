@@ -28,12 +28,10 @@ namespace QuizPortalAPI.Controllers
         /// <summary>
         /// Get logged-in user's ID from JWT token
         /// </summary>
-        private int GetLoggedInUserId()
+        private int? GetLoggedInUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out var userId))
-                return userId;
-            return 0;
+            return int.TryParse(userIdClaim, out var userId) ? userId : (int?)null;
         }
 
         /// <summary>
@@ -41,18 +39,10 @@ namespace QuizPortalAPI.Controllers
         /// POST /api/exams/{examId}/responses
         /// </summary>
         [HttpPost]
-        [ProducesResponseType(StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> SubmitAnswer(int examId, [FromBody] CreateStudentResponseDTO createResponseDTO)
         {
             try
             {
-                // Validate input
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
@@ -63,11 +53,10 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(ModelState);
 
                 var studentId = GetLoggedInUserId();
-                if (studentId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (studentId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // Check if exam is active and not published
-                var canSubmit = await _responseService.CanSubmitAnswerAsync(examId, studentId);
+                var canSubmit = await _responseService.CanSubmitAnswerAsync(examId, studentId.Value);
                 if (!canSubmit)
                 {
                     _logger.LogWarning($"Student {studentId} attempted to submit answer when exam is not active or already published");
@@ -75,17 +64,13 @@ namespace QuizPortalAPI.Controllers
                 }
 
                 // Submit answer
-                var submittedResponse = await _responseService.SubmitAnswerAsync(examId, studentId, createResponseDTO);
+                var submittedResponse = await _responseService.SubmitAnswerAsync(examId, studentId.Value, createResponseDTO);
 
                 _logger.LogInformation($"Student {studentId} submitted answer for exam {examId}");
+                // CreatedAction returns 201 Created response
                 return CreatedAtAction(nameof(GetResponseById), 
                     new { examId, id = submittedResponse.ResponseID },
                     new { message = "Answer submitted successfully", data = submittedResponse });
-            }
-            catch (ArgumentNullException ex)
-            {
-                _logger.LogWarning($"Validation error: {ex.Message}");
-                return BadRequest(new { message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
@@ -105,25 +90,18 @@ namespace QuizPortalAPI.Controllers
         /// GET /api/exams/{examId}/responses
         /// </summary>
         [HttpGet]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetStudentExamResponses(int examId)
         {
             try
             {
-                // ✅ Validate input
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
                 var studentId = GetLoggedInUserId();
-                if (studentId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (studentId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // ✅ Get exam responses
-                var examResponses = await _responseService.GetStudentExamResponsesAsync(examId, studentId);
+                var examResponses = await _responseService.GetStudentExamResponsesAsync(examId, studentId.Value);
 
                 _logger.LogInformation($"Student {studentId} retrieved responses for exam {examId}");
                 return Ok(new
@@ -158,18 +136,10 @@ namespace QuizPortalAPI.Controllers
         /// PUT /api/exams/{examId}/responses/{questionId}
         /// </summary>
         [HttpPut("{questionId}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateAnswer(int examId, int questionId, [FromBody] CreateStudentResponseDTO updateResponseDTO)
         {
             try
             {
-                // ✅ Validate input
                 if (examId <= 0 || questionId <= 0)
                     return BadRequest(new { message = "Invalid exam or question ID" });
 
@@ -180,36 +150,30 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(ModelState);
 
                 var studentId = GetLoggedInUserId();
-                if (studentId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (studentId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // ✅ Check if exam is active and not published
-                var canSubmit = await _responseService.CanSubmitAnswerAsync(examId, studentId);
+                var canSubmit = await _responseService.CanSubmitAnswerAsync(examId, studentId.Value);
                 if (!canSubmit)
                 {
                     _logger.LogWarning($"Student {studentId} attempted to update answer when exam is not active or already published");
                     return Conflict(new { message = "Exam is not active or results have already been published. Cannot update answer" });
                 }
 
-                // ✅ Check if response exists for this question
-                var responseExists = await _responseService.ResponseExistsAsync(examId, questionId, studentId);
+                // Check if response exists for this question
+                var responseExists = await _responseService.ResponseExistsAsync(examId, questionId, studentId.Value);
                 if (!responseExists)
                 {
                     _logger.LogWarning($"No response found for student {studentId} to question {questionId}");
                     return NotFound(new { message = "Response not found. Please submit an answer first" });
                 }
 
-                // ✅ Update answer
+                // Update answer
                 updateResponseDTO.QuestionID = questionId;
-                var updatedResponse = await _responseService.SubmitAnswerAsync(examId, studentId, updateResponseDTO);
+                var updatedResponse = await _responseService.SubmitAnswerAsync(examId, studentId.Value, updateResponseDTO);
 
                 _logger.LogInformation($"Student {studentId} updated answer for question {questionId} in exam {examId}");
                 return Ok(new { message = "Answer updated successfully", data = updatedResponse });
-            }
-            catch (ArgumentNullException ex)
-            {
-                _logger.LogWarning($"Validation error: {ex.Message}");
-                return BadRequest(new { message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
@@ -225,97 +189,23 @@ namespace QuizPortalAPI.Controllers
         }
 
         /// <summary>
-        /// Withdraw a submitted response (only during active exam)
-        /// DELETE /api/exams/{examId}/responses/{questionId}
-        /// </summary>
-        [HttpDelete("{questionId}")]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> WithdrawResponse(int examId, int questionId)
-        {
-            try
-            {
-                // ✅ Validate input
-                if (examId <= 0 || questionId <= 0)
-                    return BadRequest(new { message = "Invalid exam or question ID" });
-
-                var studentId = GetLoggedInUserId();
-                if (studentId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
-
-                // ✅ Check if exam is active and not published
-                var canSubmit = await _responseService.CanSubmitAnswerAsync(examId, studentId);
-                if (!canSubmit)
-                {
-                    _logger.LogWarning($"Student {studentId} attempted to withdraw answer when exam is not active or already published");
-                    return Conflict(new { message = "Exam is not active or results have already been published. Cannot withdraw response" });
-                }
-
-                // ✅ Find response
-                var response = await _responseService.GetStudentExamResponsesAsync(examId, studentId);
-                var responseToWithdraw = response.Responses
-                    .FirstOrDefault(r => r.QuestionID == questionId);
-
-                if (responseToWithdraw == null)
-                {
-                    _logger.LogWarning($"Response not found for withdrawal");
-                    return NotFound(new { message = "Response not found" });
-                }
-
-                // ✅ Withdraw response
-                var result = await _responseService.WithdrawResponseAsync(responseToWithdraw.ResponseID, studentId);
-                if (!result)
-                    return NotFound(new { message = "Response not found" });
-
-                _logger.LogInformation($"Student {studentId} withdrew response for question {questionId} in exam {examId}");
-                return NoContent();
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Unauthorized: {ex.Message}");
-                return Forbid();
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning($"Invalid operation: {ex.Message}");
-                return Conflict(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error withdrawing response: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while withdrawing your response" });
-            }
-        }
-
-        /// <summary>
         /// Get student's response count for an exam
         /// GET /api/exams/{examId}/responses/count
         /// </summary>
         [HttpGet("count")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetResponseCount(int examId)
         {
             try
             {
-                // ✅ Validate input
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
                 var studentId = GetLoggedInUserId();
-                if (studentId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (studentId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // ✅ Get count
-                var count = await _responseService.GetStudentResponseCountAsync(examId, studentId);
+                // Get count
+                var count = await _responseService.GetStudentResponseCountAsync(examId, studentId.Value);
 
                 _logger.LogInformation($"Retrieved response count for student {studentId} in exam {examId}");
                 return Ok(new { examID = examId, responseCount = count });
@@ -333,30 +223,22 @@ namespace QuizPortalAPI.Controllers
         /// GET /api/exams/{examId}/responses/status
         /// </summary>
         [HttpGet("status")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetSubmissionStatus(int examId)
         {
             try
             {
-                // ✅ Validate input
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
                 var studentId = GetLoggedInUserId();
-                if (studentId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (studentId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // ✅ Get exam details
                 var exam = await _examService.GetExamByIdAsync(examId);
                 if (exam == null)
                     return NotFound(new { message = "Exam not found" });
 
-                // ✅ Get responses
-                var responses = await _responseService.GetStudentExamResponsesAsync(examId, studentId);
+                var responses = await _responseService.GetStudentExamResponsesAsync(examId, studentId.Value);
 
                 var now = DateTime.UtcNow;
                 var examStatus = now < exam.ScheduleStart ? "Not Started" :
@@ -390,129 +272,22 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        // !! Commented out
-        // /// <summary>
-        // /// Get question-wise statistics (Teacher only - requires elevated permissions)
-        // /// GET /api/exams/{examId}/responses/questions/{questionId}/statistics
-        // /// </summary>
-        // [HttpGet("questions/{questionId}/statistics")]
-        // [Authorize(Roles = "Teacher,Admin")]
-        // [ProducesResponseType(StatusCodes.Status200OK)]
-        // [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        // [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        // [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        // [ProducesResponseType(StatusCodes.Status404NotFound)]
-        // [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        // public async Task<IActionResult> GetQuestionStatistics(int examId, int questionId)
-        // {
-        //     try
-        //     {
-        //         // ✅ Validate input
-        //         if (examId <= 0 || questionId <= 0)
-        //             return BadRequest(new { message = "Invalid exam or question ID" });
-
-        //         var teacherId = GetLoggedInUserId();
-        //         if (teacherId == 0)
-        //             return Unauthorized(new { message = "Invalid user ID" });
-
-        //         // ✅ Verify teacher owns the exam
-        //         var isOwner = await _examService.IsTeacherExamOwnerAsync(examId, teacherId);
-        //         if (!isOwner)
-        //         {
-        //             _logger.LogWarning($"Teacher {teacherId} attempted to view statistics for exam {examId} they don't own");
-        //             return Forbid();
-        //         }
-
-        //         // ✅ Get statistics
-        //         var stats = await _responseService.GetQuestionStatisticsAsync(questionId);
-
-        //         _logger.LogInformation($"Teacher {teacherId} retrieved statistics for question {questionId} in exam {examId}");
-        //         return Ok(new { data = stats });
-        //     }
-        //     catch (InvalidOperationException ex)
-        //     {
-        //         _logger.LogWarning($"Invalid operation: {ex.Message}");
-        //         return NotFound(new { message = ex.Message });
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         _logger.LogError($"Error retrieving question statistics: {ex.Message}");
-        //         return StatusCode(StatusCodes.Status500InternalServerError,
-        //             new { message = "An error occurred while retrieving statistics" });
-        //     }
-        // }
-
-        // /// <summary>
-        // /// Get all responses for a question (Teacher only)
-        // /// GET /api/exams/{examId}/responses/questions/{questionId}/all
-        // /// </summary>
-        // [HttpGet("questions/{questionId}/all")]
-        // [Authorize(Roles = "Teacher,Admin")]
-        // [ProducesResponseType(StatusCodes.Status200OK)]
-        // [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        // [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        // [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        // [ProducesResponseType(StatusCodes.Status404NotFound)]
-        // [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        // public async Task<IActionResult> GetQuestionResponses(int examId, int questionId)
-        // {
-        //     try
-        //     {
-        //         // ✅ Validate input
-        //         if (examId <= 0 || questionId <= 0)
-        //             return BadRequest(new { message = "Invalid exam or question ID" });
-
-        //         var teacherId = GetLoggedInUserId();
-        //         if (teacherId == 0)
-        //             return Unauthorized(new { message = "Invalid user ID" });
-
-        //         // ✅ Verify teacher owns the exam
-        //         var isOwner = await _examService.IsTeacherExamOwnerAsync(examId, teacherId);
-        //         if (!isOwner)
-        //         {
-        //             _logger.LogWarning($"Teacher {teacherId} attempted to view responses for exam {examId} they don't own");
-        //             return Forbid();
-        //         }
-
-        //         // ✅ Get responses
-        //         var responses = await _responseService.GetExamResponsesByQuestionAsync(questionId);
-
-        //         _logger.LogInformation($"Teacher {teacherId} retrieved all responses for question {questionId}");
-        //         return Ok(new { count = responses.Count(), data = responses });
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         _logger.LogError($"Error retrieving question responses: {ex.Message}");
-        //         return StatusCode(StatusCodes.Status500InternalServerError,
-        //             new { message = "An error occurred while retrieving responses" });
-        //     }
-        // }
-        // !! Till here
-
         /// <summary>
         /// Get a specific response by ID
         /// GET /api/exams/{examId}/responses/{id}
         /// </summary>
         [HttpGet("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetResponseById(int examId, int id)
         {
             try
             {
-                // ✅ Validate input
                 if (examId <= 0 || id <= 0)
                     return BadRequest(new { message = "Invalid exam or response ID" });
 
                 var studentId = GetLoggedInUserId();
-                if (studentId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (studentId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // ✅ Get response
                 var response = await _responseService.GetResponseByIdAsync(id);
                 if (response == null)
                 {
@@ -520,14 +295,12 @@ namespace QuizPortalAPI.Controllers
                     return NotFound(new { message = "Response not found" });
                 }
 
-                // ✅ Verify response belongs to this exam
                 if (response.ExamID != examId)
                 {
                     _logger.LogWarning($"Response {id} does not belong to exam {examId}");
                     return NotFound(new { message = "Response not found in this exam" });
                 }
 
-                // ✅ Verify student owns the response
                 if (response.StudentID != studentId)
                 {
                     _logger.LogWarning($"Student {studentId} attempted to access response {id} they don't own");
@@ -550,25 +323,18 @@ namespace QuizPortalAPI.Controllers
         /// POST /api/exams/{examId}/responses/submit
         /// </summary>
         [HttpPost("submit")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status409Conflict)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> FinalizeExamSubmission(int examId)
         {
             try
             {
-                // ✅ Validate input
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
                 var studentId = GetLoggedInUserId();
-                if (studentId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (studentId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // ✅ Finalize exam submission
-                var result = await _responseService.FinalizeExamSubmissionAsync(examId, studentId);
+                var result = await _responseService.FinalizeExamSubmissionAsync(examId, studentId.Value);
                 
                 _logger.LogInformation($"Student {studentId} finalized submission for exam {examId}");
                 return Ok(new { 

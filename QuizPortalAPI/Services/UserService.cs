@@ -166,7 +166,6 @@ namespace QuizPortalAPI.Services
                     user.Role = role;
                 }
                 
-
                 _context.Users.Update(user);
                 await _context.SaveChangesAsync();
 
