@@ -60,20 +60,20 @@ namespace QuizPortalAPI.Services
                 if (createExamDTO.PassingPercentage < 0 || createExamDTO.PassingPercentage > 100)
                     throw new InvalidOperationException("Passing percentage must be between 0 and 100");
 
-                // Validate password strength
-                if (string.IsNullOrWhiteSpace(createExamDTO.AccessPassword) || createExamDTO.AccessPassword.Length < 6)
-                    throw new InvalidOperationException("Access password must be at least 6 characters");
+                // // Validate password strength
+                // if (string.IsNullOrWhiteSpace(createExamDTO.AccessPassword) || createExamDTO.AccessPassword.Length < 6)
+                //     throw new InvalidOperationException("Access password must be at least 6 characters");
 
                 // Generate unique access code
                 string accessCode = GenerateAccessCode();
-                // if there is an exam exists with the same access code, then generate a new one
-                while (await ExamExistsByAccessCodeAsync(accessCode))
-                {
-                    accessCode = GenerateAccessCode();
-                }
+                // // if there is an exam exists with the same access code, then generate a new one
+                // while (await ExamExistsByAccessCodeAsync(accessCode))
+                // {
+                //     accessCode = GenerateAccessCode();
+                // }
 
                 // Hash the access password
-                string hashedPassword = BCrypt.Net.BCrypt.HashPassword(createExamDTO.AccessPassword);
+                // string hashedPassword = BCrypt.Net.BCrypt.HashPassword(createExamDTO.AccessPassword);
 
                 // Create exam entity
                 var exam = new Exam
@@ -87,7 +87,7 @@ namespace QuizPortalAPI.Services
                     ScheduleEnd = createExamDTO.ScheduleEnd,
                     PassingPercentage = createExamDTO.PassingPercentage,
                     AccessCode = accessCode,
-                    AccessPassword = hashedPassword,
+                    // AccessPassword = hashedPassword,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -457,21 +457,21 @@ namespace QuizPortalAPI.Services
                     }
                 }
 
-                // 10. Validate password if provided
-                if (!string.IsNullOrWhiteSpace(updateExamDTO.AccessPassword))
-                {
-                    if (updateExamDTO.AccessPassword.Length < 6)
-                    {
-                        throw new InvalidOperationException(
-                            "Password must be at least 6 characters long");
-                    }
+                // // 10. Validate password if provided
+                // if (!string.IsNullOrWhiteSpace(updateExamDTO.AccessPassword))
+                // {
+                //     if (updateExamDTO.AccessPassword.Length < 6)
+                //     {
+                //         throw new InvalidOperationException(
+                //             "Password must be at least 6 characters long");
+                //     }
 
-                    if (updateExamDTO.AccessPassword.Length > 100)
-                    {
-                        throw new InvalidOperationException(
-                            "Password cannot exceed 100 characters");
-                    }
-                }
+                //     if (updateExamDTO.AccessPassword.Length > 100)
+                //     {
+                //         throw new InvalidOperationException(
+                //             "Password cannot exceed 100 characters");
+                //     }
+                // }
 
                 // Track what changed for logging
                 var changes = new List<string>();
@@ -534,12 +534,12 @@ namespace QuizPortalAPI.Services
                     exam.PassingPercentage = updateExamDTO.PassingPercentage.Value;
                 }
 
-                // Update password (hash it)
-                if (!string.IsNullOrWhiteSpace(updateExamDTO.AccessPassword))
-                {
-                    changes.Add("Password: Updated");
-                    exam.AccessPassword = BCrypt.Net.BCrypt.HashPassword(updateExamDTO.AccessPassword);
-                }
+                // // Update password (hash it)
+                // if (!string.IsNullOrWhiteSpace(updateExamDTO.AccessPassword))
+                // {
+                //     changes.Add("Password: Updated");
+                //     exam.AccessPassword = BCrypt.Net.BCrypt.HashPassword(updateExamDTO.AccessPassword);
+                // }
 
                 // Check if any changes were made
                 if (changes.Count == 0)
@@ -642,12 +642,12 @@ namespace QuizPortalAPI.Services
         /// <summary>
         /// Student validates access to exam
         /// </summary>
-        public async Task<ExamAccessResponseDTO?> ValidateAccessAsync(string accessCode, string accessPassword)
+        public async Task<ExamAccessResponseDTO?> ValidateAccessAsync(string accessCode)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(accessCode) || string.IsNullOrWhiteSpace(accessPassword))
-                    throw new ArgumentException("Access code and password are required");
+                if (string.IsNullOrWhiteSpace(accessCode))
+                    throw new ArgumentException("Access code is required");
 
                 // Find exam by access code
                 var exam = await _context.Exams
@@ -665,16 +665,16 @@ namespace QuizPortalAPI.Services
                     };
                 }
 
-                // Verify password
-                if (!BCrypt.Net.BCrypt.Verify(accessPassword, exam.AccessPassword))
-                {
-                    _logger.LogWarning($"Invalid password for exam {exam.ExamID}");
-                    return new ExamAccessResponseDTO
-                    {
-                        CanAttempt = false,
-                        Message = "Invalid password"
-                    };
-                }
+                // // Verify password
+                // if (!BCrypt.Net.BCrypt.Verify(accessPassword, exam.AccessPassword))
+                // {
+                //     _logger.LogWarning($"Invalid password for exam {exam.ExamID}");
+                //     return new ExamAccessResponseDTO
+                //     {
+                //         CanAttempt = false,
+                //         Message = "Invalid password"
+                //     };
+                // }
 
                 var now = DateTime.UtcNow;
 
@@ -712,7 +712,9 @@ namespace QuizPortalAPI.Services
                     };
                 }
 
-                if (exam.ScheduleEnd - now < TimeSpan.FromMinutes(exam.DurationMinutes))
+                var timeRemaining = exam.ScheduleEnd - now;
+
+                if (timeRemaining < TimeSpan.FromMinutes(exam.DurationMinutes))
                 {
                     _logger.LogInformation($"Insufficient time remaining to start exam {exam.ExamID}");
                     return new ExamAccessResponseDTO
@@ -724,14 +726,16 @@ namespace QuizPortalAPI.Services
                     };
                 }
 
-                // Exam is active and accessible
+
                 _logger.LogInformation($"Student granted access to exam {exam.ExamID}");
                 return new ExamAccessResponseDTO
                 {
                     ExamID = exam.ExamID,
                     Title = exam.Title,
                     Description = exam.Description,
-                    DurationMinutes = exam.DurationMinutes,
+                    DurationMinutes = timeRemaining.TotalMinutes < exam.DurationMinutes
+                        ? (int)timeRemaining.TotalMinutes
+                        : exam.DurationMinutes,
                     ScheduleStart = exam.ScheduleStart,
                     ScheduleEnd = exam.ScheduleEnd,
                     PassingPercentage = exam.PassingPercentage,
@@ -740,7 +744,7 @@ namespace QuizPortalAPI.Services
                     BatchRemark = exam.BatchRemark,
                     CreatedByUserName = exam.CreatedByUser?.FullName ?? "Unknown",
                     CanAttempt = true,
-                    Message = "Access granted. You can now start the exam."
+                    Message = timeRemaining.TotalMinutes < exam.DurationMinutes ? "You can start the exam now but will have limited time to complete it." : "Access granted. You can now start the exam."
                 };
             }
             catch (ArgumentException ex)
@@ -793,11 +797,14 @@ namespace QuizPortalAPI.Services
         /// </summary>
         public string GenerateAccessCode()
         {
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            var random = new Random();
-            return new string(Enumerable.Range(0, 6)
-                .Select(_ => chars[random.Next(chars.Length)])
-                .ToArray());
+            // const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            // var random = new Random();
+            // return new string(Enumerable.Range(0, 6)
+            //     .Select(_ => chars[random.Next(chars.Length)])
+            //     .ToArray());
+
+            Guid accessCode = Guid.NewGuid();
+            return accessCode.ToString();
         }
 
         /// <summary>

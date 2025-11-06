@@ -362,16 +362,14 @@ namespace QuizPortalAPI.Controllers
                 if (string.IsNullOrWhiteSpace(accessExamDTO.AccessCode))
                     return BadRequest(new { message = "Access code is required" });
 
-                if (string.IsNullOrWhiteSpace(accessExamDTO.AccessPassword))
-                    return BadRequest(new { message = "Access password is required" });
+                // if (string.IsNullOrWhiteSpace(accessExamDTO.AccessPassword))
+                //     return BadRequest(new { message = "Access password is required" });
 
                 // Validate access
-                var accessResponse = await _examService.ValidateAccessAsync(
-                    accessExamDTO.AccessCode,
-                    accessExamDTO.AccessPassword);
+                var accessResponse = await _examService.ValidateAccessAsync(accessExamDTO.AccessCode);
 
                 if (accessResponse == null)
-                    return BadRequest(new { message = "Invalid access code or password" });
+                    return BadRequest(new { message = "Invalid access code" });
 
                 if (!accessResponse.CanAttempt)
                 {

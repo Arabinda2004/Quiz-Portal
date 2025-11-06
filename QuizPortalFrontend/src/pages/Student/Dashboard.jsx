@@ -34,7 +34,7 @@ export default function StudentDashboard() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const [accessCode, setAccessCode] = useState('')
-  const [accessPassword, setAccessPassword] = useState('')
+  // const [accessPassword, setAccessPassword] = useState('')
   const [completedExams, setCompletedExams] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -78,7 +78,7 @@ export default function StudentDashboard() {
     setLoading(true)
 
     try {
-      const response = await studentService.validateAccess(accessCode, accessPassword)
+      const response = await studentService.validateAccess(accessCode)
 
       if (response.canAttempt) {
         setSuccess('Access granted! Redirecting to exam...')
@@ -157,14 +157,14 @@ export default function StudentDashboard() {
                 id="accessCode"
                 type="text"
                 value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                onChange={(e) => setAccessCode(e.target.value)}
                 placeholder="Enter access code"
                 required
                 disabled={loading}
               />
             </FormGroup>
 
-            <FormGroup>
+            {/* <FormGroup>
               <Label htmlFor="accessPassword">Access Password</Label>
               <Input
                 id="accessPassword"
@@ -175,7 +175,7 @@ export default function StudentDashboard() {
                 required
                 disabled={loading}
               />
-            </FormGroup>
+            </FormGroup> */}
 
             <Button type="submit" disabled={loading}>
               {loading ? 'Validating...' : 'Access Exam'}

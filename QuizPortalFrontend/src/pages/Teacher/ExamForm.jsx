@@ -207,7 +207,7 @@ export default function ExamForm() {
     scheduleStart: '',
     scheduleEnd: '',
     // accessCode: '',
-    accessPassword: '',
+    // accessPassword: '',
     durationMinutes: 60,
   })
 
@@ -239,7 +239,7 @@ export default function ExamForm() {
         scheduleStart: exam.scheduleStart ? formatDatetime(exam.scheduleStart) : '',
         scheduleEnd: exam.scheduleEnd ? formatDatetime(exam.scheduleEnd) : '',
         // accessCode: exam.accessCode || '',
-        accessPassword: exam.accessPassword || '',
+        // accessPassword: exam.accessPassword || '',
         durationMinutes: exam.durationMinutes || 60,
       })
     } catch (err) {
@@ -296,11 +296,11 @@ export default function ExamForm() {
     //   errors.accessCode = 'Access code must be at least 4 characters'
     // }
 
-    if (!formData.accessPassword.trim()) {
-      errors.accessPassword = 'Access password is required'
-    } else if (formData.accessPassword.length < 4) {
-      errors.accessPassword = 'Access password must be at least 4 characters'
-    }
+    // if (!formData.accessPassword.trim()) {
+    //   errors.accessPassword = 'Access password is required'
+    // } else if (formData.accessPassword.length < 4) {
+    //   errors.accessPassword = 'Access password must be at least 4 characters'
+    // }
 
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
@@ -521,7 +521,7 @@ export default function ExamForm() {
                 <Helper>Students need this code to access the exam</Helper>
               </FormGroup> */}
 
-              <FormGroup>
+              {/* <FormGroup>
                 <Label htmlFor="accessPassword">Access Password *</Label>
                 <Input
                   id="accessPassword"
@@ -536,7 +536,7 @@ export default function ExamForm() {
                   <Helper style={{ color: '#ef4444' }}>{validationErrors.accessPassword}</Helper>
                 )}
                 <Helper>Students need this password along with the access code</Helper>
-              </FormGroup>
+              </FormGroup> */}
             </TwoColumnGrid>
 
             {/* Duration */}

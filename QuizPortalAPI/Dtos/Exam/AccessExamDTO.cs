@@ -8,8 +8,8 @@ namespace QuizPortalAPI.DTOs.Exam
         [StringLength(50, ErrorMessage = "Invalid access code")]
         public string AccessCode { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Access password is required")]
-        [StringLength(100, ErrorMessage = "Invalid password")]
-        public string AccessPassword { get; set; } = string.Empty;
+        // [Required(ErrorMessage = "Access password is required")]
+        // [StringLength(100, ErrorMessage = "Invalid password")]
+        // public string AccessPassword { get; set; } = string.Empty;
     }
 }

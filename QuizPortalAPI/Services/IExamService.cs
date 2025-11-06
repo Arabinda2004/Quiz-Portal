@@ -18,7 +18,7 @@ namespace QuizPortalAPI.Services
         Task<bool> DeleteExamAsync(int examId, int teacherId);
         
         // Student operations
-        Task<ExamAccessResponseDTO?> ValidateAccessAsync(string accessCode, string accessPassword);
+        Task<ExamAccessResponseDTO?> ValidateAccessAsync(string accessCode);
 
         Task<dynamic?> GetExamQuestionsForStudentAsync(int examId);
         

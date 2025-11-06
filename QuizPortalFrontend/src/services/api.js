@@ -338,12 +338,13 @@ export const teacherService = {
 // Student APIs
 export const studentService = {
   // Validate exam access
-  validateAccess: async (accessCode, accessPassword) => {
+  validateAccess: async (accessCode) => {
     try {
       const response = await api.post('/exams/validate-access', {
-        accessCode,
-        accessPassword,
+        accessCode
       })
+      console.log("Access data: ")
+      console.log(response.data)
       return response.data
     } catch (error) {
       throw error.response?.data || error.message

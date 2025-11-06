@@ -63,9 +63,9 @@ namespace QuizPortalAPI.Models
         [StringLength(50)]
         public string AccessCode { get; set; } = string.Empty;
 
-        [Required]
-        [StringLength(100)]
-        public string AccessPassword { get; set; } = string.Empty;
+        // [Required]
+        // [StringLength(100)]
+        // public string AccessPassword { get; set; } = string.Empty;
 
         [Required]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
