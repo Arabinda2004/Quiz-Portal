@@ -20,12 +20,10 @@ namespace QuizPortalAPI.Controllers
             _logger = logger;
         }
 
-        private int GetLoggedInUserId()
+        private int? GetLoggedInUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out var userId))
-                return userId;
-            return 0;
+            return int.TryParse(userIdClaim, out var userId) ? userId : (int?)null;
         }
 
 
@@ -88,10 +86,10 @@ namespace QuizPortalAPI.Controllers
             try
             {
                 var userId = GetLoggedInUserId();
-                if (userId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (userId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var user = await _userService.GetUserByIdAsync(userId);
+                var user = await _userService.GetUserByIdAsync(userId.Value);
                 if (user == null)
                     return NotFound(new { message = "User not found" });
 
@@ -121,10 +119,10 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(ModelState);
 
                 var userId = GetLoggedInUserId();
-                if (userId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (userId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var updatedUser = await _userService.UpdateUserAsync(userId, updateUserDTO);
+                var updatedUser = await _userService.UpdateUserAsync(userId.Value, updateUserDTO);
                 if (updatedUser == null)
                     return NotFound(new { message = "User not found" });
 
@@ -163,10 +161,10 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "New password must be different from current password" });
 
                 var userId = GetLoggedInUserId();
-                if (userId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (userId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var result = await _userService.ChangeUserPasswordAsync(userId, changePasswordDTO);
+                var result = await _userService.ChangeUserPasswordAsync(userId.Value, changePasswordDTO);
                 if (!result)
                     return BadRequest(new { message = "Current password is incorrect" });
 
@@ -181,7 +179,6 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        //  SECURED: Users can only delete their own account with password confirmation
         [HttpDelete("profile")]
         [Authorize]
         public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountDTO deleteAccountDTO)
@@ -193,20 +190,20 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "Password is required to delete account" });
 
                 var userId = GetLoggedInUserId();
-                if (userId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (userId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
                 //  Verify password before deletion
-                var user = await _userService.GetUserByIdAsync(userId);
+                var user = await _userService.GetUserByIdAsync(userId.Value);
                 if (user == null)
                     return NotFound(new { message = "User not found" });
 
                 // Check password using service method
-                var passwordVerified = await _userService.VerifyPasswordAsync(userId, deleteAccountDTO.Password);
+                var passwordVerified = await _userService.VerifyPasswordAsync(userId.Value, deleteAccountDTO.Password);
                 if (!passwordVerified)
                     return Unauthorized(new { message = "Invalid password - account not deleted" });
 
-                var result = await _userService.DeleteUserAsync(userId);
+                var result = await _userService.DeleteUserAsync(userId.Value);
                 if (!result)
                     return NotFound(new { message = "User not found" });
 

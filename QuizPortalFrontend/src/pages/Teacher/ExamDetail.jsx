@@ -723,7 +723,7 @@ export default function ExamDetail() {
                       <th>Email</th>
                       <th>Attempted</th>
                       <th>Submitted</th>
-                      <th>Score</th>
+                      {/* <th>Score</th> */}
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -734,8 +734,8 @@ export default function ExamDetail() {
                         <td>{attempt.studentName}</td>
                         <td>{attempt.studentEmail}</td>
                         <td>{attempt.answeredQuestions > 0 ? 'Yes' : 'No'}</td>
-                        <td>{attempt.isSubmitted ? 'Yes' : 'No'}</td>
-                        <td>{attempt.score ? `${attempt.score}/${exam.totalMarks}` : 'N/A'}</td>
+                        <td>{attempt.status ? 'Yes' : 'No'}</td>
+                        {/* <td>{attempt.score ? `${attempt.score}/${exam.totalMarks}` : 'N/A'}</td> */}
                         <td>{attempt.status || 'Pending'}</td>
                         <td>
                           <Button

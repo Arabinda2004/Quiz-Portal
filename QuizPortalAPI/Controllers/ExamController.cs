@@ -86,19 +86,14 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (id <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var teacherId = GetLoggedInUserId();
                 if (teacherId == null)
                     return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // Get exam
                 var exam = await _examService.GetExamByIdAsync(id);
                 if (exam == null)
                     return NotFound(new { message = "Exam not found" });
 
-                // Verify ownership (teacher can only see their own exams)
                 if (exam.CreatedBy != teacherId)
                     return Forbid();
 
@@ -142,7 +137,7 @@ namespace QuizPortalAPI.Controllers
         }
 
         /// <summary>
-        /// Get all exams (Admin only)
+        /// Get all exams
         /// GET /api/exams/all
         /// </summary>
         [HttpGet("all")]
@@ -179,7 +174,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // Validate input
                 if (id <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
@@ -193,7 +187,6 @@ namespace QuizPortalAPI.Controllers
                 if (teacherId == null)
                     return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // Update exam (service verifies ownership)
                 var updatedExam = await _examService.UpdateExamAsync(id, teacherId.Value, updateExamDTO);
                 if (updatedExam == null)
                     return NotFound(new { message = "Exam not found" });
@@ -278,7 +271,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // Validate input
                 if (id <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
@@ -294,7 +286,6 @@ namespace QuizPortalAPI.Controllers
                     return NotFound(new { message = "Exam not found" });
                 }
 
-                // Check if student has already submitted this exam (Result with status "Completed" or "Graded")
                 var existingResult = await _context.Results
                     .FirstOrDefaultAsync(r => r.ExamID == id && r.StudentID == studentId &&
                         (r.Status == "Completed" || r.Status == "Graded"));
@@ -305,7 +296,6 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "You have already submitted this exam. You cannot access it again." });
                 }
 
-                // Check if exam is accessible (within schedule)
                 var now = DateTime.UtcNow;
                 if (now < exam.ScheduleStart || now > exam.ScheduleEnd)
                 {
@@ -352,7 +342,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // Validate input
                 if (accessExamDTO == null)
                     return BadRequest(new { message = "Invalid request data" });
 
@@ -362,10 +351,6 @@ namespace QuizPortalAPI.Controllers
                 if (string.IsNullOrWhiteSpace(accessExamDTO.AccessCode))
                     return BadRequest(new { message = "Access code is required" });
 
-                // if (string.IsNullOrWhiteSpace(accessExamDTO.AccessPassword))
-                //     return BadRequest(new { message = "Access password is required" });
-
-                // Validate access
                 var accessResponse = await _examService.ValidateAccessAsync(accessExamDTO.AccessCode);
 
                 if (accessResponse == null)

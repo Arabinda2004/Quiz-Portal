@@ -16,33 +16,33 @@ namespace QuizPortalAPI.Services
             _logger = logger;
         }
 
-        /// <summary>
-        /// Get result by ID
-        /// </summary>
-        public async Task<ResultDTO?> GetResultByIdAsync(int resultId)
-        {
-            try
-            {
-                var result = await _context.Results
-                    .Include(r => r.Exam)
-                    .Include(r => r.Student)
-                    .Include(r => r.EvaluatorUser)
-                    .FirstOrDefaultAsync(r => r.ResultID == resultId);
+        // /// <summary>
+        // /// Get result by ID
+        // /// </summary>
+        // public async Task<ResultDTO?> GetResultByIdAsync(int resultId)
+        // {
+        //     try
+        //     {
+        //         var result = await _context.Results
+        //             .Include(r => r.Exam)
+        //             .Include(r => r.Student)
+        //             .Include(r => r.EvaluatorUser)
+        //             .FirstOrDefaultAsync(r => r.ResultID == resultId);
 
-                if (result == null)
-                {
-                    _logger.LogWarning($"Result {resultId} not found");
-                    return null;
-                }
+        //         if (result == null)
+        //         {
+        //             _logger.LogWarning($"Result {resultId} not found");
+        //             return null;
+        //         }
 
-                return MapToResultDTO(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving result {resultId}: {ex.Message}");
-                throw;
-            }
-        }
+        //         return MapToResultDTO(result);
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving result {resultId}: {ex.Message}");
+        //         throw;
+        //     }
+        // }
 
         /// <summary>
         /// Get student's result for a specific exam
@@ -103,256 +103,256 @@ namespace QuizPortalAPI.Services
             }
         }
 
-        /// <summary>
-        /// Get all results for a student (legacy, no pagination)
-        /// </summary>
-        public async Task<IEnumerable<ResultDTO>> GetStudentResultsLegacyAsync(int studentId)
-        {
-            try
-            {
-                var results = await _context.Results
-                    .Where(r => r.StudentID == studentId)
-                    .Include(r => r.Exam)
-                        .ThenInclude(e => e!.Questions)
-                    .Include(r => r.Student)
-                    .Include(r => r.EvaluatorUser)
-                    .OrderByDescending(r => r.CreatedAt)
-                    .ToListAsync();
+        // /// <summary>
+        // /// Get all results for a student (legacy, no pagination)
+        // /// </summary>
+        // public async Task<IEnumerable<ResultDTO>> GetStudentResultsLegacyAsync(int studentId)
+        // {
+        //     try
+        //     {
+        //         var results = await _context.Results
+        //             .Where(r => r.StudentID == studentId)
+        //             .Include(r => r.Exam)
+        //                 .ThenInclude(e => e!.Questions)
+        //             .Include(r => r.Student)
+        //             .Include(r => r.EvaluatorUser)
+        //             .OrderByDescending(r => r.CreatedAt)
+        //             .ToListAsync();
 
-                _logger.LogInformation($"Retrieved {results.Count} results for student {studentId}");
-                return results.Select(r => MapToResultDTO(r)).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving student results: {ex.Message}");
-                throw;
-            }
-        }
+        //         _logger.LogInformation($"Retrieved {results.Count} results for student {studentId}");
+        //         return results.Select(r => MapToResultDTO(r)).ToList();
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving student results: {ex.Message}");
+        //         throw;
+        //     }
+        // }
 
-        /// <summary>
-        /// Get all results for an exam
-        /// </summary>
-        public async Task<ExamResultsDTO> GetExamResultsAsync(int examId, int teacherId)
-        {
-            try
-            {
-                // ✅ Verify teacher owns the exam
-                var exam = await _context.Exams.FindAsync(examId);
-                if (exam == null)
-                    throw new InvalidOperationException("Exam not found");
+        // /// <summary>
+        // /// Get all results for an exam
+        // /// </summary>
+        // public async Task<ExamResultsDTO> GetExamResultsAsync(int examId, int teacherId)
+        // {
+        //     try
+        //     {
+        //         // ✅ Verify teacher owns the exam
+        //         var exam = await _context.Exams.FindAsync(examId);
+        //         if (exam == null)
+        //             throw new InvalidOperationException("Exam not found");
 
-                if (exam.CreatedBy != teacherId)
-                {
-                    _logger.LogWarning($"Teacher {teacherId} attempted to view results for exam {examId} they don't own");
-                    throw new UnauthorizedAccessException("You can only view results for your own exams");
-                }
+        //         if (exam.CreatedBy != teacherId)
+        //         {
+        //             _logger.LogWarning($"Teacher {teacherId} attempted to view results for exam {examId} they don't own");
+        //             throw new UnauthorizedAccessException("You can only view results for your own exams");
+        //         }
 
-                var results = await _context.Results
-                    .Where(r => r.ExamID == examId)
-                    .Include(r => r.Exam)
-                    .Include(r => r.Student)
-                    .Include(r => r.EvaluatorUser)
-                    .OrderByDescending(r => r.TotalMarks)
-                    .ToListAsync();
+        //         var results = await _context.Results
+        //             .Where(r => r.ExamID == examId)
+        //             .Include(r => r.Exam)
+        //             .Include(r => r.Student)
+        //             .Include(r => r.EvaluatorUser)
+        //             .OrderByDescending(r => r.TotalMarks)
+        //             .ToListAsync();
 
-                var resultDTOs = results.Select(r => MapToResultDTO(r)).ToList();
+        //         var resultDTOs = results.Select(r => MapToResultDTO(r)).ToList();
 
-                // ✅ FIX: Explicit cast from double to decimal
-                var stats = new ExamResultsDTO
-                {
-                    ExamID = examId,
-                    ExamName = exam.Title,
-                    TotalSubmissions = results.Count,
-                    GradedSubmissions = results.Count(r => r.Status == "Graded"),
-                    AverageMarks = results.Count > 0 ? (decimal)results.Average(r => (double)r.TotalMarks) : 0,
-                    HighestMarks = results.Count > 0 ? results.Max(r => r.TotalMarks) : 0,
-                    LowestMarks = results.Count > 0 ? results.Min(r => r.TotalMarks) : 0,
-                    Results = resultDTOs
-                };
+        //         // ✅ FIX: Explicit cast from double to decimal
+        //         var stats = new ExamResultsDTO
+        //         {
+        //             ExamID = examId,
+        //             ExamName = exam.Title,
+        //             TotalSubmissions = results.Count,
+        //             GradedSubmissions = results.Count(r => r.Status == "Graded"),
+        //             AverageMarks = results.Count > 0 ? (decimal)results.Average(r => (double)r.TotalMarks) : 0,
+        //             HighestMarks = results.Count > 0 ? results.Max(r => r.TotalMarks) : 0,
+        //             LowestMarks = results.Count > 0 ? results.Min(r => r.TotalMarks) : 0,
+        //             Results = resultDTOs
+        //         };
 
-                _logger.LogInformation($"Retrieved results for exam {examId} by teacher {teacherId}");
-                return stats;
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning($"Invalid operation: {ex.Message}");
-                throw;
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Unauthorized access: {ex.Message}");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving exam results: {ex.Message}");
-                throw;
-            }
-        }
+        //         _logger.LogInformation($"Retrieved results for exam {examId} by teacher {teacherId}");
+        //         return stats;
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         _logger.LogWarning($"Invalid operation: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (UnauthorizedAccessException ex)
+        //     {
+        //         _logger.LogWarning($"Unauthorized access: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving exam results: {ex.Message}");
+        //         throw;
+        //     }
+        // }
 
-        /// <summary>
-        /// Calculate exam result for a student
-        /// </summary>
-        public async Task<ResultDTO> CalculateExamResultAsync(int examId, int studentId)
-        {
-            try
-            {
-                // ✅ Validate exam and student
-                var exam = await _context.Exams.FindAsync(examId);
-                if (exam == null)
-                    throw new InvalidOperationException("Exam not found");
+        // /// <summary>
+        // /// Calculate exam result for a student
+        // /// </summary>
+        // public async Task<ResultDTO> CalculateExamResultAsync(int examId, int studentId)
+        // {
+        //     try
+        //     {
+        //         // ✅ Validate exam and student
+        //         var exam = await _context.Exams.FindAsync(examId);
+        //         if (exam == null)
+        //             throw new InvalidOperationException("Exam not found");
 
-                var student = await _context.Users.FindAsync(studentId);
-                if (student == null)
-                    throw new InvalidOperationException("Student not found");
+        //         var student = await _context.Users.FindAsync(studentId);
+        //         if (student == null)
+        //             throw new InvalidOperationException("Student not found");
 
-                // ✅ Get or create result
-                var result = await _context.Results
-                    .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
+        //         // ✅ Get or create result
+        //         var result = await _context.Results
+        //             .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
 
-                if (result == null)
-                {
-                    result = new Result
-                    {
-                        ExamID = examId,
-                        StudentID = studentId,
-                        Status = "Completed",
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    _context.Results.Add(result);
-                }
+        //         if (result == null)
+        //         {
+        //             result = new Result
+        //             {
+        //                 ExamID = examId,
+        //                 StudentID = studentId,
+        //                 Status = "Completed",
+        //                 CreatedAt = DateTime.UtcNow
+        //             };
+        //             _context.Results.Add(result);
+        //         }
 
-                // ✅ Calculate total marks from responses
-                var totalMarks = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
-                    .SumAsync(sr => sr.MarksObtained);
+        //         // ✅ Calculate total marks from responses
+        //         var totalMarks = await _context.StudentResponses
+        //             .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
+        //             .SumAsync(sr => sr.MarksObtained);
 
-                var examTotalMarks = await GetExamTotalMarksAsync(examId);
+        //         var examTotalMarks = await GetExamTotalMarksAsync(examId);
 
-                result.TotalMarks = totalMarks;
-                result.Percentage = examTotalMarks > 0 ? (totalMarks / examTotalMarks) * 100 : 0;
-                result.UpdatedAt = DateTime.UtcNow;
+        //         result.TotalMarks = totalMarks;
+        //         result.Percentage = examTotalMarks > 0 ? (totalMarks / examTotalMarks) * 100 : 0;
+        //         result.UpdatedAt = DateTime.UtcNow;
 
-                // ✅ Calculate rank
-                result.Rank = await GetStudentRankAsync(examId, studentId);
+        //         // ✅ Calculate rank
+        //         result.Rank = await GetStudentRankAsync(examId, studentId);
 
-                _context.Results.Update(result);
-                await _context.SaveChangesAsync();
+        //         _context.Results.Update(result);
+        //         await _context.SaveChangesAsync();
 
-                _logger.LogInformation($"Result calculated for student {studentId} in exam {examId}");
-                return MapToResultDTO(result);
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning($"Invalid operation: {ex.Message}");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error calculating result: {ex.Message}");
-                throw;
-            }
-        }
+        //         _logger.LogInformation($"Result calculated for student {studentId} in exam {examId}");
+        //         return MapToResultDTO(result);
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         _logger.LogWarning($"Invalid operation: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error calculating result: {ex.Message}");
+        //         throw;
+        //     }
+        // }
 
-        /// <summary>
-        /// Grade a subjective response
-        /// </summary>
-        public async Task<bool> GradeSubjectiveResponseAsync(int responseId, int evaluatorId, decimal marksObtained)
-        {
-            try
-            {
-                // ✅ Validate response exists
-                var response = await _context.StudentResponses.FindAsync(responseId);
-                if (response == null)
-                    throw new InvalidOperationException("Response not found");
+        // /// <summary>
+        // /// Grade a subjective response
+        // /// </summary>
+        // public async Task<bool> GradeSubjectiveResponseAsync(int responseId, int evaluatorId, decimal marksObtained)
+        // {
+        //     try
+        //     {
+        //         // ✅ Validate response exists
+        //         var response = await _context.StudentResponses.FindAsync(responseId);
+        //         if (response == null)
+        //             throw new InvalidOperationException("Response not found");
 
-                // ✅ Validate question is subjective or SAQ
-                var question = await _context.Questions.FindAsync(response.QuestionID);
-                if (question == null)
-                    throw new InvalidOperationException("Question not found");
+        //         // ✅ Validate question is subjective or SAQ
+        //         var question = await _context.Questions.FindAsync(response.QuestionID);
+        //         if (question == null)
+        //             throw new InvalidOperationException("Question not found");
 
-                if (question.QuestionType == QuestionType.MCQ)
-                    throw new InvalidOperationException("Cannot manually grade MCQ responses");
+        //         if (question.QuestionType == QuestionType.MCQ)
+        //             throw new InvalidOperationException("Cannot manually grade MCQ responses");
 
-                // ✅ Validate marks
-                if (marksObtained < 0 || marksObtained > question.Marks)
-                    throw new ArgumentException($"Marks must be between 0 and {question.Marks}");
+        //         // ✅ Validate marks
+        //         if (marksObtained < 0 || marksObtained > question.Marks)
+        //             throw new ArgumentException($"Marks must be between 0 and {question.Marks}");
 
-                // ✅ Update response
-                response.MarksObtained = marksObtained;
-                response.IsCorrect = marksObtained > 0;
+        //         // ✅ Update response
+        //         response.MarksObtained = marksObtained;
+        //         response.IsCorrect = marksObtained > 0;
 
-                _context.StudentResponses.Update(response);
-                await _context.SaveChangesAsync();
+        //         _context.StudentResponses.Update(response);
+        //         await _context.SaveChangesAsync();
 
-                _logger.LogInformation($"Response {responseId} graded by evaluator {evaluatorId} with {marksObtained} marks");
-                return true;
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning($"Validation error: {ex.Message}");
-                throw;
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning($"Invalid operation: {ex.Message}");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error grading response: {ex.Message}");
-                throw;
-            }
-        }
+        //         _logger.LogInformation($"Response {responseId} graded by evaluator {evaluatorId} with {marksObtained} marks");
+        //         return true;
+        //     }
+        //     catch (ArgumentException ex)
+        //     {
+        //         _logger.LogWarning($"Validation error: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         _logger.LogWarning($"Invalid operation: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error grading response: {ex.Message}");
+        //         throw;
+        //     }
+        // }
 
-        /// <summary>
-        /// Publish result for student
-        /// </summary>
-        public async Task<bool> PublishResultAsync(int resultId, int teacherId)
-        {
-            try
-            {
-                var result = await _context.Results
-                    .Include(r => r.Exam)
-                    .FirstOrDefaultAsync(r => r.ResultID == resultId);
+        // /// <summary>
+        // /// Publish result for student
+        // /// </summary>
+        // public async Task<bool> PublishResultAsync(int resultId, int teacherId)
+        // {
+        //     try
+        //     {
+        //         var result = await _context.Results
+        //             .Include(r => r.Exam)
+        //             .FirstOrDefaultAsync(r => r.ResultID == resultId);
 
-                if (result == null)
-                    throw new InvalidOperationException("Result not found");
+        //         if (result == null)
+        //             throw new InvalidOperationException("Result not found");
 
-                // ✅ Verify teacher owns the exam
-                if (result.Exam?.CreatedBy != teacherId)
-                {
-                    _logger.LogWarning($"Teacher {teacherId} attempted to publish result they don't own");
-                    throw new UnauthorizedAccessException("You can only publish results for your own exams");
-                }
+        //         // ✅ Verify teacher owns the exam
+        //         if (result.Exam?.CreatedBy != teacherId)
+        //         {
+        //             _logger.LogWarning($"Teacher {teacherId} attempted to publish result they don't own");
+        //             throw new UnauthorizedAccessException("You can only publish results for your own exams");
+        //         }
 
-                result.Status = "Graded";
-                result.EvaluatedBy = teacherId;
-                result.EvaluatedAt = DateTime.UtcNow;
-                result.UpdatedAt = DateTime.UtcNow;
+        //         result.Status = "Graded";
+        //         result.EvaluatedBy = teacherId;
+        //         result.EvaluatedAt = DateTime.UtcNow;
+        //         result.UpdatedAt = DateTime.UtcNow;
 
-                _context.Results.Update(result);
-                await _context.SaveChangesAsync();
+        //         _context.Results.Update(result);
+        //         await _context.SaveChangesAsync();
 
-                _logger.LogInformation($"Result {resultId} published by teacher {teacherId}");
-                return true;
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning($"Invalid operation: {ex.Message}");
-                throw;
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Unauthorized access: {ex.Message}");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error publishing result: {ex.Message}");
-                throw;
-            }
-        }
+        //         _logger.LogInformation($"Result {resultId} published by teacher {teacherId}");
+        //         return true;
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         _logger.LogWarning($"Invalid operation: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (UnauthorizedAccessException ex)
+        //     {
+        //         _logger.LogWarning($"Unauthorized access: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error publishing result: {ex.Message}");
+        //         throw;
+        //     }
+        // }
 
         /// <summary>
         /// Get exam's total marks
@@ -379,7 +379,6 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                // ✅ Verify teacher owns the exam
                 var exam = await _context.Exams.FindAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
@@ -422,55 +421,54 @@ namespace QuizPortalAPI.Services
             }
         }
 
-        /// <summary>
-        /// Get a specific student's result in an exam for teacher
-        /// </summary>
-        public async Task<ResultDTO?> GetStudentExamResultForTeacherAsync(int examId, int studentId, int teacherId)
-        {
-            try
-            {
-                // ✅ Verify teacher owns the exam
-                var exam = await _context.Exams.FindAsync(examId);
-                if (exam == null)
-                    throw new InvalidOperationException("Exam not found");
+        // /// <summary>
+        // /// Get a specific student's result in an exam for teacher
+        // /// </summary>
+        // public async Task<ResultDTO?> GetStudentExamResultForTeacherAsync(int examId, int studentId, int teacherId)
+        // {
+        //     try
+        //     {
+        //         var exam = await _context.Exams.FindAsync(examId);
+        //         if (exam == null)
+        //             throw new InvalidOperationException("Exam not found");
 
-                if (exam.CreatedBy != teacherId)
-                {
-                    _logger.LogWarning($"Teacher {teacherId} attempted to view result for exam {examId} they don't own");
-                    throw new UnauthorizedAccessException("You can only view results for your own exams");
-                }
+        //         if (exam.CreatedBy != teacherId)
+        //         {
+        //             _logger.LogWarning($"Teacher {teacherId} attempted to view result for exam {examId} they don't own");
+        //             throw new UnauthorizedAccessException("You can only view results for your own exams");
+        //         }
 
-                var result = await _context.Results
-                    .Include(r => r.Exam)
-                    .Include(r => r.Student)
-                    .Include(r => r.EvaluatorUser)
-                    .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
+        //         var result = await _context.Results
+        //             .Include(r => r.Exam)
+        //             .Include(r => r.Student)
+        //             .Include(r => r.EvaluatorUser)
+        //             .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
 
-                if (result == null)
-                {
-                    _logger.LogWarning($"Result not found for exam {examId}, student {studentId}");
-                    return null;
-                }
+        //         if (result == null)
+        //         {
+        //             _logger.LogWarning($"Result not found for exam {examId}, student {studentId}");
+        //             return null;
+        //         }
 
-                _logger.LogInformation($"Teacher {teacherId} retrieved result for student {studentId} in exam {examId}");
-                return MapToResultDTO(result);
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning($"Invalid operation: {ex.Message}");
-                throw;
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Unauthorized access: {ex.Message}");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving student result: {ex.Message}");
-                throw;
-            }
-        }
+        //         _logger.LogInformation($"Teacher {teacherId} retrieved result for student {studentId} in exam {examId}");
+        //         return MapToResultDTO(result);
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         _logger.LogWarning($"Invalid operation: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (UnauthorizedAccessException ex)
+        //     {
+        //         _logger.LogWarning($"Unauthorized access: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving student result: {ex.Message}");
+        //         throw;
+        //     }
+        // }
 
         /// <summary>
         /// Get detailed exam result with question-wise breakdown
@@ -488,6 +486,7 @@ namespace QuizPortalAPI.Services
 
                 var exam = await _context.Exams.FindAsync(examId);
                 var totalMarks = await GetExamTotalMarksAsync(examId);
+                var passingPercentage = exam?.PassingPercentage ?? 40;
 
                 var responses = await _context.StudentResponses
                     .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
@@ -518,6 +517,7 @@ namespace QuizPortalAPI.Services
                     TotalMarks = result.TotalMarks,
                     ExamTotalMarks = totalMarks,
                     Percentage = result.Percentage,
+                    PassingPercentage = passingPercentage,
                     Status = result.Status,
                     TotalQuestions = responses.Count,
                     CorrectAnswers = responses.Count(r => r.IsCorrect == true),
@@ -537,225 +537,223 @@ namespace QuizPortalAPI.Services
             }
         }
 
-        /// <summary>
-        /// Get result statistics for an exam
-        /// </summary>
-        public async Task<dynamic> GetResultStatisticsAsync(int examId, int teacherId)
-        {
-            try
-            {
-                // ✅ Verify teacher owns the exam
-                var exam = await _context.Exams.FindAsync(examId);
-                if (exam == null)
-                    throw new InvalidOperationException("Exam not found");
+        // /// <summary>
+        // /// Get result statistics for an exam
+        // /// </summary>
+        // public async Task<dynamic> GetResultStatisticsAsync(int examId, int teacherId)
+        // {
+        //     try
+        //     {
+        //         var exam = await _context.Exams.FindAsync(examId);
+        //         if (exam == null)
+        //             throw new InvalidOperationException("Exam not found");
 
-                if (exam.CreatedBy != teacherId)
-                {
-                    _logger.LogWarning($"Teacher {teacherId} attempted to view statistics for exam {examId} they don't own");
-                    throw new UnauthorizedAccessException("You can only view statistics for your own exams");
-                }
+        //         if (exam.CreatedBy != teacherId)
+        //         {
+        //             _logger.LogWarning($"Teacher {teacherId} attempted to view statistics for exam {examId} they don't own");
+        //             throw new UnauthorizedAccessException("You can only view statistics for your own exams");
+        //         }
 
-                var results = await _context.Results
-                    .Where(r => r.ExamID == examId)
-                    .ToListAsync();
+        //         var results = await _context.Results
+        //             .Where(r => r.ExamID == examId)
+        //             .ToListAsync();
 
-                var totalMarks = await GetExamTotalMarksAsync(examId);
+        //         var totalMarks = await GetExamTotalMarksAsync(examId);
 
-                return new
-                {
-                    ExamID = examId,
-                    ExamName = exam.Title,
-                    TotalSubmissions = results.Count,
-                    GradedSubmissions = results.Count(r => r.Status == "Graded"),
-                    PendingSubmissions = results.Count(r => r.Status == "Pending"),
-                    CompletedSubmissions = results.Count(r => r.Status == "Completed"),
-                    AverageMarks = results.Count > 0 ? Math.Round(results.Average(r => (double)r.TotalMarks), 2) : 0,
-                    HighestMarks = results.Count > 0 ? results.Max(r => r.TotalMarks) : 0,
-                    LowestMarks = results.Count > 0 ? results.Min(r => r.TotalMarks) : 0,
-                    ExamTotalMarks = totalMarks,
-                    AveragePercentage = results.Count > 0 ? Math.Round(results.Average(r => (double)r.Percentage), 2) : 0
-                };
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning($"Invalid operation: {ex.Message}");
-                throw;
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Unauthorized access: {ex.Message}");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving statistics: {ex.Message}");
-                throw;
-            }
-        }
+        //         return new
+        //         {
+        //             ExamID = examId,
+        //             ExamName = exam.Title,
+        //             TotalSubmissions = results.Count,
+        //             GradedSubmissions = results.Count(r => r.Status == "Graded"),
+        //             PendingSubmissions = results.Count(r => r.Status == "Pending"),
+        //             CompletedSubmissions = results.Count(r => r.Status == "Completed"),
+        //             AverageMarks = results.Count > 0 ? Math.Round(results.Average(r => (double)r.TotalMarks), 2) : 0,
+        //             HighestMarks = results.Count > 0 ? results.Max(r => r.TotalMarks) : 0,
+        //             LowestMarks = results.Count > 0 ? results.Min(r => r.TotalMarks) : 0,
+        //             ExamTotalMarks = totalMarks,
+        //             AveragePercentage = results.Count > 0 ? Math.Round(results.Average(r => (double)r.Percentage), 2) : 0
+        //         };
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         _logger.LogWarning($"Invalid operation: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (UnauthorizedAccessException ex)
+        //     {
+        //         _logger.LogWarning($"Unauthorized access: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving statistics: {ex.Message}");
+        //         throw;
+        //     }
+        // }
 
-        /// <summary>
-        /// Get result summary with grade distribution
-        /// </summary>
-        public async Task<dynamic> GetResultSummaryAsync(int examId, int teacherId)
-        {
-            try
-            {
-                // ✅ Verify teacher owns the exam
-                var exam = await _context.Exams.FindAsync(examId);
-                if (exam == null)
-                    throw new InvalidOperationException("Exam not found");
+        // /// <summary>
+        // /// Get result summary with grade distribution
+        // /// </summary>
+        // public async Task<dynamic> GetResultSummaryAsync(int examId, int teacherId)
+        // {
+        //     try
+        //     {
+        //         var exam = await _context.Exams.FindAsync(examId);
+        //         if (exam == null)
+        //             throw new InvalidOperationException("Exam not found");
 
-                if (exam.CreatedBy != teacherId)
-                {
-                    _logger.LogWarning($"Teacher {teacherId} attempted to view summary for exam {examId} they don't own");
-                    throw new UnauthorizedAccessException("You can only view summary for your own exams");
-                }
+        //         if (exam.CreatedBy != teacherId)
+        //         {
+        //             _logger.LogWarning($"Teacher {teacherId} attempted to view summary for exam {examId} they don't own");
+        //             throw new UnauthorizedAccessException("You can only view summary for your own exams");
+        //         }
 
-                var results = await _context.Results
-                    .Where(r => r.ExamID == examId)
-                    .ToListAsync();
+        //         var results = await _context.Results
+        //             .Where(r => r.ExamID == examId)
+        //             .ToListAsync();
 
-                // Need to get PassingMarks if it exists, otherwise use 50% of total marks as default
-                var totalMarks = await GetExamTotalMarksAsync(examId);
-                var passingMarks = totalMarks > 0 ? totalMarks * 0.5m : 0; // 50% default
+        //         // Need to get PassingMarks if it exists, otherwise use 50% of total marks as default
+        //         var totalMarks = await GetExamTotalMarksAsync(examId);
+        //         var passingMarks = totalMarks > 0 ? totalMarks * 0.5m : 0; // 50% default
 
-                var passCount = results.Count(r => r.TotalMarks >= passingMarks);
-                var failCount = results.Count - passCount;
+        //         var passCount = results.Count(r => r.TotalMarks >= passingMarks);
+        //         var failCount = results.Count - passCount;
 
-                return new
-                {
-                    ExamID = examId,
-                    ExamName = exam.Title,
-                    TotalResults = results.Count,
-                    PassCount = passCount,
-                    FailCount = failCount,
-                    PassPercentage = results.Count > 0 ? Math.Round((decimal)passCount / results.Count * 100, 2) : 0,
-                    FailPercentage = results.Count > 0 ? Math.Round((decimal)failCount / results.Count * 100, 2) : 0,
-                    GradeDistribution = new
-                    {
-                        APlusPlusCount = results.Count(r => r.Percentage >= 90),
-                        APlusCount = results.Count(r => r.Percentage >= 80 && r.Percentage < 90),
-                        BCount = results.Count(r => r.Percentage >= 70 && r.Percentage < 80),
-                        CCount = results.Count(r => r.Percentage >= 60 && r.Percentage < 70),
-                        DCount = results.Count(r => r.Percentage >= 50 && r.Percentage < 60),
-                        FCount = results.Count(r => r.Percentage < 50)
-                    }
-                };
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning($"Invalid operation: {ex.Message}");
-                throw;
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Unauthorized access: {ex.Message}");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving summary: {ex.Message}");
-                throw;
-            }
-        }
+        //         return new
+        //         {
+        //             ExamID = examId,
+        //             ExamName = exam.Title,
+        //             TotalResults = results.Count,
+        //             PassCount = passCount,
+        //             FailCount = failCount,
+        //             PassPercentage = results.Count > 0 ? Math.Round((decimal)passCount / results.Count * 100, 2) : 0,
+        //             FailPercentage = results.Count > 0 ? Math.Round((decimal)failCount / results.Count * 100, 2) : 0,
+        //             GradeDistribution = new
+        //             {
+        //                 APlusPlusCount = results.Count(r => r.Percentage >= 90),
+        //                 APlusCount = results.Count(r => r.Percentage >= 80 && r.Percentage < 90),
+        //                 BCount = results.Count(r => r.Percentage >= 70 && r.Percentage < 80),
+        //                 CCount = results.Count(r => r.Percentage >= 60 && r.Percentage < 70),
+        //                 DCount = results.Count(r => r.Percentage >= 50 && r.Percentage < 60),
+        //                 FCount = results.Count(r => r.Percentage < 50)
+        //             }
+        //         };
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         _logger.LogWarning($"Invalid operation: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (UnauthorizedAccessException ex)
+        //     {
+        //         _logger.LogWarning($"Unauthorized access: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving summary: {ex.Message}");
+        //         throw;
+        //     }
+        // }
 
-        /// <summary>
-        /// Get pass/fail breakdown for an exam
-        /// </summary>
-        public async Task<dynamic> GetPassFailBreakdownAsync(int examId, int teacherId)
-        {
-            try
-            {
-                // ✅ Verify teacher owns the exam
-                var exam = await _context.Exams.FindAsync(examId);
-                if (exam == null)
-                    throw new InvalidOperationException("Exam not found");
+        // /// <summary>
+        // /// Get pass/fail breakdown for an exam
+        // /// </summary>
+        // public async Task<dynamic> GetPassFailBreakdownAsync(int examId, int teacherId)
+        // {
+        //     try
+        //     {
+        //         var exam = await _context.Exams.FindAsync(examId);
+        //         if (exam == null)
+        //             throw new InvalidOperationException("Exam not found");
 
-                if (exam.CreatedBy != teacherId)
-                {
-                    _logger.LogWarning($"Teacher {teacherId} attempted to view pass/fail for exam {examId} they don't own");
-                    throw new UnauthorizedAccessException("You can only view pass/fail data for your own exams");
-                }
+        //         if (exam.CreatedBy != teacherId)
+        //         {
+        //             _logger.LogWarning($"Teacher {teacherId} attempted to view pass/fail for exam {examId} they don't own");
+        //             throw new UnauthorizedAccessException("You can only view pass/fail data for your own exams");
+        //         }
 
-                var results = await _context.Results
-                    .Where(r => r.ExamID == examId)
-                    .Include(r => r.Student)
-                    .ToListAsync();
+        //         var results = await _context.Results
+        //             .Where(r => r.ExamID == examId)
+        //             .Include(r => r.Student)
+        //             .ToListAsync();
 
-                // Calculate passing marks as 50% of total exam marks (default)
-                var totalMarks = await GetExamTotalMarksAsync(examId);
-                var passingMarks = totalMarks > 0 ? totalMarks * 0.5m : 0;
+        //         var passingPercentage = exam.PassingPercentage;
 
-                var passedStudents = results
-                    .Where(r => r.TotalMarks >= passingMarks)
-                    .Select(r => new
-                    {
-                        r.StudentID,
-                        StudentName = r.Student?.FullName ?? "Unknown",
-                        r.TotalMarks,
-                        r.Percentage,
-                        r.Rank
-                    })
-                    .ToList();
+        //         var totalMarks = await GetExamTotalMarksAsync(examId);
+        //         var passingMarks = totalMarks > 0 ? totalMarks * (passingPercentage / 100) : 0;
 
-                var failedStudents = results
-                    .Where(r => r.TotalMarks < passingMarks)
-                    .Select(r => new
-                    {
-                        r.StudentID,
-                        StudentName = r.Student?.FullName ?? "Unknown",
-                        r.TotalMarks,
-                        r.Percentage,
-                        r.Rank
-                    })
-                    .ToList();
+        //         var passedStudents = results
+        //             .Where(r => r.TotalMarks >= passingMarks)
+        //             .Select(r => new
+        //             {
+        //                 r.StudentID,
+        //                 StudentName = r.Student?.FullName ?? "Unknown",
+        //                 r.TotalMarks,
+        //                 r.Percentage,
+        //                 r.Rank
+        //             })
+        //             .ToList();
 
-                return new
-                {
-                    ExamID = examId,
-                    ExamName = exam.Title,
-                    PassingMarks = passingMarks,
-                    TotalResults = results.Count,
-                    PassCount = passedStudents.Count,
-                    FailCount = failedStudents.Count,
-                    PassedStudents = passedStudents,
-                    FailedStudents = failedStudents
-                };
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning($"Invalid operation: {ex.Message}");
-                throw;
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Unauthorized access: {ex.Message}");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving pass/fail breakdown: {ex.Message}");
-                throw;
-            }
-        }
+        //         var failedStudents = results
+        //             .Where(r => r.TotalMarks < passingMarks)
+        //             .Select(r => new
+        //             {
+        //                 r.StudentID,
+        //                 StudentName = r.Student?.FullName ?? "Unknown",
+        //                 r.TotalMarks,
+        //                 r.Percentage,
+        //                 r.Rank
+        //             })
+        //             .ToList();
 
-        /// <summary>
-        /// Get student's total marks in an exam
-        /// </summary>
-        public async Task<decimal> GetStudentTotalMarksAsync(int examId, int studentId)
-        {
-            try
-            {
-                return await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
-                    .SumAsync(sr => sr.MarksObtained);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error getting student total marks: {ex.Message}");
-                return 0;
-            }
-        }
+        //         return new
+        //         {
+        //             ExamID = examId,
+        //             ExamName = exam.Title,
+        //             PassingMarks = passingMarks,
+        //             TotalResults = results.Count,
+        //             PassCount = passedStudents.Count,
+        //             FailCount = failedStudents.Count,
+        //             PassedStudents = passedStudents,
+        //             FailedStudents = failedStudents
+        //         };
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         _logger.LogWarning($"Invalid operation: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (UnauthorizedAccessException ex)
+        //     {
+        //         _logger.LogWarning($"Unauthorized access: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving pass/fail breakdown: {ex.Message}");
+        //         throw;
+        //     }
+        // }
+
+        // /// <summary>
+        // /// Get student's total marks in an exam
+        // /// </summary>
+        // public async Task<decimal> GetStudentTotalMarksAsync(int examId, int studentId)
+        // {
+        //     try
+        //     {
+        //         return await _context.StudentResponses
+        //             .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
+        //             .SumAsync(sr => sr.MarksObtained);
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error getting student total marks: {ex.Message}");
+        //         return 0;
+        //     }
+        // }
 
         /// <summary>
         /// Get student's rank in exam
@@ -826,213 +824,211 @@ namespace QuizPortalAPI.Services
             }
         }
 
-        /// <summary>
-        /// Check if result exists
-        /// </summary>
-        public async Task<bool> ResultExistsAsync(int examId, int studentId)
-        {
-            try
-            {
-                return await _context.Results
-                    .AnyAsync(r => r.ExamID == examId && r.StudentID == studentId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error checking result existence: {ex.Message}");
-                return false;
-            }
-        }
+        // /// <summary>
+        // /// Check if result exists
+        // /// </summary>
+        // public async Task<bool> ResultExistsAsync(int examId, int studentId)
+        // {
+        //     try
+        //     {
+        //         return await _context.Results
+        //             .AnyAsync(r => r.ExamID == examId && r.StudentID == studentId);
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error checking result existence: {ex.Message}");
+        //         return false;
+        //     }
+        // }
 
-        /// <summary>
-        /// Auto-grade MCQ responses for an exam
-        /// </summary>
-        public async Task<int> AutoGradeMCQResponsesAsync(int examId)
-        {
-            try
-            {
-                var mcqResponses = await _context.StudentResponses
-                    .Include(sr => sr.Question)
-                    .Where(sr => sr.ExamID == examId && sr.Question!.QuestionType == QuestionType.MCQ)
-                    .ToListAsync();
+        // /// <summary>
+        // /// Auto-grade MCQ responses for an exam
+        // /// </summary>
+        // public async Task<int> AutoGradeMCQResponsesAsync(int examId)
+        // {
+        //     try
+        //     {
+        //         var mcqResponses = await _context.StudentResponses
+        //             .Include(sr => sr.Question)
+        //             .Where(sr => sr.ExamID == examId && sr.Question!.QuestionType == QuestionType.MCQ)
+        //             .ToListAsync();
 
-                int gradedCount = 0;
+        //         int gradedCount = 0;
 
-                foreach (var response in mcqResponses)
-                {
-                    if (response.Question == null)
-                        continue;
+        //         foreach (var response in mcqResponses)
+        //         {
+        //             if (response.Question == null)
+        //                 continue;
 
-                    // Get the correct answer option
-                    var correctOption = await _context.QuestionOptions
-                        .FirstOrDefaultAsync(o => o.QuestionID == response.QuestionID && o.IsCorrect);
+        //             // Get the correct answer option
+        //             var correctOption = await _context.QuestionOptions
+        //                 .FirstOrDefaultAsync(o => o.QuestionID == response.QuestionID && o.IsCorrect);
 
-                    if (correctOption != null)
-                    {
-                        bool isCorrect = response.AnswerText == correctOption.OptionID.ToString() || 
-                                       response.AnswerText == correctOption.OptionText;
+        //             if (correctOption != null)
+        //             {
+        //                 bool isCorrect = response.AnswerText == correctOption.OptionID.ToString() || 
+        //                                response.AnswerText == correctOption.OptionText;
 
-                        response.IsCorrect = isCorrect;
-                        response.MarksObtained = isCorrect ? response.Question.Marks : 0;
+        //                 response.IsCorrect = isCorrect;
+        //                 response.MarksObtained = isCorrect ? response.Question.Marks : 0;
 
-                        _context.StudentResponses.Update(response);
-                        gradedCount++;
-                    }
-                }
+        //                 _context.StudentResponses.Update(response);
+        //                 gradedCount++;
+        //             }
+        //         }
 
-                await _context.SaveChangesAsync();
-                _logger.LogInformation($"Auto-graded {gradedCount} MCQ responses for exam {examId}");
-                return gradedCount;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error auto-grading MCQ responses: {ex.Message}");
-                throw;
-            }
-        }
+        //         await _context.SaveChangesAsync();
+        //         _logger.LogInformation($"Auto-graded {gradedCount} MCQ responses for exam {examId}");
+        //         return gradedCount;
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error auto-grading MCQ responses: {ex.Message}");
+        //         throw;
+        //     }
+        // }
 
-        /// <summary>
-        /// Publish all results for an exam (bulk operation)
-        /// </summary>
-        public async Task<dynamic> PublishExamResultsAsync(int examId, int teacherId, decimal passingPercentage = 50)
-        {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                // ✅ Verify teacher owns the exam
-                var exam = await _context.Exams.FindAsync(examId);
-                if (exam == null)
-                    throw new InvalidOperationException("Exam not found");
+        // /// <summary>
+        // /// Publish all results for an exam (bulk operation)
+        // /// </summary>
+        // public async Task<dynamic> PublishExamResultsAsync(int examId, int teacherId, decimal passingPercentage = 50)
+        // {
+        //     using var transaction = await _context.Database.BeginTransactionAsync();
+        //     try
+        //     {
+        //         // ✅ Verify teacher owns the exam
+        //         var exam = await _context.Exams.FindAsync(examId);
+        //         if (exam == null)
+        //             throw new InvalidOperationException("Exam not found");
 
-                if (exam.CreatedBy != teacherId)
-                {
-                    _logger.LogWarning($"Teacher {teacherId} attempted to publish results for exam {examId} they don't own");
-                    throw new UnauthorizedAccessException("You can only publish results for your own exams");
-                }
+        //         if (exam.CreatedBy != teacherId)
+        //         {
+        //             _logger.LogWarning($"Teacher {teacherId} attempted to publish results for exam {examId} they don't own");
+        //             throw new UnauthorizedAccessException("You can only publish results for your own exams");
+        //         }
 
-                // ✅ Check if already published
-                var alreadyPublished = await _context.Results
-                    .Where(r => r.ExamID == examId && r.Status == "Graded")
-                    .CountAsync();
+        //         // ✅ Check if already published
+        //         var alreadyPublished = await _context.Results
+        //             .Where(r => r.ExamID == examId && r.Status == "Graded")
+        //             .CountAsync();
 
-                if (alreadyPublished > 0)
-                    throw new InvalidOperationException($"Results already published for this exam. {alreadyPublished} results are in Graded status");
+        //         if (alreadyPublished > 0)
+        //             throw new InvalidOperationException($"Results already published for this exam. {alreadyPublished} results are in Graded status");
 
-                // ✅ Auto-grade MCQ responses first
-                await AutoGradeMCQResponsesAsync(examId);
+        //         // ✅ Auto-grade MCQ responses first
+        //         await AutoGradeMCQResponsesAsync(examId);
 
-                // ✅ Get all students who took the exam
-                var studentIds = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId)
-                    .Select(sr => sr.StudentID)
-                    .Distinct()
-                    .ToListAsync();
+        //         // ✅ Get all students who took the exam
+        //         var studentIds = await _context.StudentResponses
+        //             .Where(sr => sr.ExamID == examId)
+        //             .Select(sr => sr.StudentID)
+        //             .Distinct()
+        //             .ToListAsync();
 
-                var totalExamMarks = await GetExamTotalMarksAsync(examId);
-                var passingMarks = (totalExamMarks * passingPercentage) / 100;
+        //         var totalExamMarks = await GetExamTotalMarksAsync(examId);
+        //         var passingMarks = (totalExamMarks * passingPercentage) / 100;
 
-                int resultsPublished = 0;
-                var publishedResults = new List<dynamic>();
+        //         int resultsPublished = 0;
+        //         var publishedResults = new List<dynamic>();
 
-                foreach (var studentId in studentIds)
-                {
-                    // ✅ Calculate total marks for this student
-                    var totalMarks = await GetStudentTotalMarksAsync(examId, studentId);
+        //         foreach (var studentId in studentIds)
+        //         {
+        //             // ✅ Calculate total marks for this student
+        //             var totalMarks = await GetStudentTotalMarksAsync(examId, studentId);
 
-                    // ✅ Calculate percentage
-                    var percentage = totalExamMarks > 0 ? (totalMarks / totalExamMarks) * 100 : 0;
+        //             // ✅ Calculate percentage
+        //             var percentage = totalExamMarks > 0 ? (totalMarks / totalExamMarks) * 100 : 0;
 
-                    // ✅ Determine pass/fail
-                    var isPassed = totalMarks >= passingMarks;
+        //             // ✅ Determine pass/fail
+        //             var isPassed = totalMarks >= passingMarks;
 
-                    // ✅ Calculate rank
-                    var rank = await GetStudentRankAsync(examId, studentId);
+        //             // ✅ Calculate rank
+        //             var rank = await GetStudentRankAsync(examId, studentId);
 
-                    // ✅ Get or create result
-                    var result = await _context.Results
-                        .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
+        //             // ✅ Get or create result
+        //             var result = await _context.Results
+        //                 .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
 
-                    bool isNewResult = false;
-                    if (result == null)
-                    {
-                        result = new Result
-                        {
-                            ExamID = examId,
-                            StudentID = studentId,
-                            CreatedAt = DateTime.UtcNow
-                        };
-                        _context.Results.Add(result);
-                        isNewResult = true;
-                    }
+        //             bool isNewResult = false;
+        //             if (result == null)
+        //             {
+        //                 result = new Result
+        //                 {
+        //                     ExamID = examId,
+        //                     StudentID = studentId,
+        //                     CreatedAt = DateTime.UtcNow
+        //                 };
+        //                 _context.Results.Add(result);
+        //                 isNewResult = true;
+        //             }
 
-                    // ✅ Update result with calculated values
-                    result.TotalMarks = totalMarks;
-                    result.Percentage = percentage;
-                    result.Rank = rank;
-                    result.Status = "Graded"; // Mark as published
-                    result.EvaluatedBy = teacherId;
-                    result.EvaluatedAt = DateTime.UtcNow;
-                    result.UpdatedAt = DateTime.UtcNow;
+        //             result.TotalMarks = totalMarks;
+        //             result.Percentage = percentage;
+        //             result.Rank = rank;
+        //             result.Status = "Graded"; // Mark as published
+        //             result.EvaluatedBy = teacherId;
+        //             result.EvaluatedAt = DateTime.UtcNow;
+        //             result.UpdatedAt = DateTime.UtcNow;
 
-                    // Only call Update() on existing results, newly added ones don't need it
-                    if (!isNewResult)
-                    {
-                        _context.Results.Update(result);
-                    }
+        //             // Only call Update() on existing results, newly added ones don't need it
+        //             if (!isNewResult)
+        //             {
+        //                 _context.Results.Update(result);
+        //             }
 
-                    resultsPublished++;
+        //             resultsPublished++;
 
-                    // ✅ Add to response list
-                    publishedResults.Add(new
-                    {
-                        result.ResultID,
-                        result.StudentID,
-                        StudentName = result.Student?.FullName ?? "Unknown",
-                        TotalMarks = totalMarks,
-                        Percentage = Math.Round(percentage, 2),
-                        Rank = rank,
-                        Status = isPassed ? "Passed" : "Failed",
-                        IsPassed = isPassed
-                    });
-                }
+        //             publishedResults.Add(new
+        //             {
+        //                 result.ResultID,
+        //                 result.StudentID,
+        //                 StudentName = result.Student?.FullName ?? "Unknown",
+        //                 TotalMarks = totalMarks,
+        //                 Percentage = Math.Round(percentage, 2),
+        //                 Rank = rank,
+        //                 Status = isPassed ? "Passed" : "Failed",
+        //                 IsPassed = isPassed
+        //             });
+        //         }
 
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+        //         await _context.SaveChangesAsync();
+        //         await transaction.CommitAsync();
 
-                _logger.LogInformation($"Published results for {resultsPublished} students in exam {examId} by teacher {teacherId}");
+        //         _logger.LogInformation($"Published results for {resultsPublished} students in exam {examId} by teacher {teacherId}");
 
-                return new
-                {
-                    success = true,
-                    examID = examId,
-                    examName = exam.Title,
-                    totalExamMarks = totalExamMarks,
-                    passingMarks = Math.Round(passingMarks, 2),
-                    passingPercentage = passingPercentage,
-                    resultsPublished = resultsPublished,
-                    publishedAt = DateTime.UtcNow,
-                    publishedBy = teacherId,
-                    results = publishedResults
-                };
-            }
-            catch (InvalidOperationException ex)
-            {
-                await transaction.RollbackAsync();
-                _logger.LogWarning($"Invalid operation: {ex.Message}");
-                throw;
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                await transaction.RollbackAsync();
-                _logger.LogWarning($"Unauthorized access: {ex.Message}");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                _logger.LogError($"Error publishing exam results: {ex.Message}");
-                throw;
-            }
-        }
+        //         return new
+        //         {
+        //             success = true,
+        //             examID = examId,
+        //             examName = exam.Title,
+        //             totalExamMarks = totalExamMarks,
+        //             passingMarks = Math.Round(passingMarks, 2),
+        //             passingPercentage = passingPercentage,
+        //             resultsPublished = resultsPublished,
+        //             publishedAt = DateTime.UtcNow,
+        //             publishedBy = teacherId,
+        //             results = publishedResults
+        //         };
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         await transaction.RollbackAsync();
+        //         _logger.LogWarning($"Invalid operation: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (UnauthorizedAccessException ex)
+        //     {
+        //         await transaction.RollbackAsync();
+        //         _logger.LogWarning($"Unauthorized access: {ex.Message}");
+        //         throw;
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         await transaction.RollbackAsync();
+        //         _logger.LogError($"Error publishing exam results: {ex.Message}");
+        //         throw;
+        //     }
+        // }
 
         private ResultDTO MapToResultDTO(Result result)
         {
@@ -1051,7 +1047,7 @@ namespace QuizPortalAPI.Services
             var publication = _context.ExamPublications
                 .FirstOrDefault(ep => ep.ExamID == result.ExamID);
 
-            // Calculate rank if not set (synchronously for performance)
+            // Calculate rank if not set
             int rank = result.Rank ?? 0;
             if (rank == 0 || !result.Rank.HasValue)
             {
@@ -1087,7 +1083,7 @@ namespace QuizPortalAPI.Services
                 ExamTotalMarks = examTotalMarks,
                 Rank = rank,
                 Percentage = result.Percentage,
-                PassingPercentage = publication?.PassingPercentage ?? result.Exam?.PassingPercentage ?? 50,
+                PassingPercentage = result.Exam?.PassingPercentage ?? 40,
                 Status = result.Status,
                 IsPublished = result.IsPublished,
                 EvaluatorName = result.EvaluatorUser?.FullName,
@@ -1111,7 +1107,7 @@ namespace QuizPortalAPI.Services
                     .CountAsync();
 
                 if (totalResponses == 0)
-                    return false; // No responses to grade
+                    return false;
 
                 var gradedResponses = await _context.GradingRecords
                     .Include(gr => gr.StudentResponse)

@@ -78,7 +78,7 @@ namespace QuizPortalAPI.Services
                     Message = "Login successful",
                     AccessToken = accessToken,
                     ExpiresAt = DateTime.UtcNow.AddMinutes(
-                        int.Parse(_configuration["JwtSettings:ExpirationMinutes"] ?? "15")),
+                        int.Parse(_configuration["JwtSettings:ExpirationMinutes"] ?? "60")),
                     User = userInfo
                 };
             }

@@ -67,7 +67,6 @@ namespace QuizPortalAPI.Controllers
                 var submittedResponse = await _responseService.SubmitAnswerAsync(examId, studentId.Value, createResponseDTO);
 
                 _logger.LogInformation($"Student {studentId} submitted answer for exam {examId}");
-                // CreatedAction returns 201 Created response
                 return CreatedAtAction(nameof(GetResponseById), 
                     new { examId, id = submittedResponse.ResponseID },
                     new { message = "Answer submitted successfully", data = submittedResponse });

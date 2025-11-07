@@ -170,10 +170,6 @@ using (var scope = app.Services.CreateScope())
                     existingAdmin.Email = "admin@quizportal.com";
                     needsUpdate = true;
                 }
-
-                // For reliability in local/testing environments, reset the admin password
-                // to the known default so login works. Mark IsDefaultPassword = true so
-                // callers can force a password change later.
                 existingAdmin.Password = BCrypt.Net.BCrypt.HashPassword("Admin123!");
                 existingAdmin.IsDefaultPassword = true;
                 if (needsUpdate || existingAdmin.Password != null)

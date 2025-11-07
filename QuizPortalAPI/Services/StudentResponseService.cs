@@ -638,8 +638,8 @@ namespace QuizPortalAPI.Services
                     ExamID = examId,
                     StudentID = studentId,
                     Status = "Completed",
-                    TotalMarks = 0, // Will be calculated during grading
-                    Percentage = 0, // Will be calculated during grading
+                    TotalMarks = 0, // calculated later by grading
+                    Percentage = 0, // calculated later by grading
                     IsPublished = false,
                     CreatedAt = DateTime.UtcNow
                 };

@@ -185,8 +185,8 @@ export default function StudentDashboard() {
           <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e5e7eb' }}>
             <p style={{ color: '#6b7280', fontSize: '14px' }}>
               <strong>How to access an exam:</strong><br />
-              1. Get the access code and password from your instructor<br />
-              2. Enter them above<br />
+              1. Get the access code from your instructor<br />
+              2. Enter it above<br />
               3. Click "Access Exam" to start
             </p>
           </div>

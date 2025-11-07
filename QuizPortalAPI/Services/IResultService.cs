@@ -4,7 +4,6 @@ namespace QuizPortalAPI.Services
 {
     public interface IResultService
     {
-        // ============ STUDENT ENDPOINTS ============
         
         /// <summary>
         /// Get all exam results for a student (paginated)
@@ -21,7 +20,6 @@ namespace QuizPortalAPI.Services
         /// </summary>
         Task<dynamic> GetExamResultDetailsAsync(int examId, int studentId);
 
-        // ============ TEACHER/ADMIN ENDPOINTS ============
 
         /// <summary>
         /// Get all results for an exam (paginated)
@@ -31,64 +29,63 @@ namespace QuizPortalAPI.Services
         /// <summary>
         /// Get a specific student's result in an exam
         /// </summary>
-        Task<ResultDTO?> GetStudentExamResultForTeacherAsync(int examId, int studentId, int teacherId);
+        // Task<ResultDTO?> GetStudentExamResultForTeacherAsync(int examId, int studentId, int teacherId);
 
         /// <summary>
         /// Get result statistics for an exam (average, highest, lowest marks)
         /// </summary>
-        Task<dynamic> GetResultStatisticsAsync(int examId, int teacherId);
+        // Task<dynamic> GetResultStatisticsAsync(int examId, int teacherId);
 
         /// <summary>
         /// Get result summary (grade distribution, pass/fail counts)
         /// </summary>
-        Task<dynamic> GetResultSummaryAsync(int examId, int teacherId);
+        // Task<dynamic> GetResultSummaryAsync(int examId, int teacherId);
 
         /// <summary>
         /// Get pass/fail breakdown for an exam
         /// </summary>
-        Task<dynamic> GetPassFailBreakdownAsync(int examId, int teacherId);
+        // Task<dynamic> GetPassFailBreakdownAsync(int examId, int teacherId);
 
-        // ============ UTILITY METHODS ============
 
         /// <summary>
         /// Get result by ID
         /// </summary>
-        Task<ResultDTO?> GetResultByIdAsync(int resultId);
+        // Task<ResultDTO?> GetResultByIdAsync(int resultId);
 
         /// <summary>
         /// Get all results for a student (no pagination, legacy)
         /// </summary>
-        Task<IEnumerable<ResultDTO>> GetStudentResultsLegacyAsync(int studentId);
+        // Task<IEnumerable<ResultDTO>> GetStudentResultsLegacyAsync(int studentId);
 
         /// <summary>
         /// Get all results for an exam with statistics
         /// </summary>
-        Task<ExamResultsDTO> GetExamResultsAsync(int examId, int teacherId);
+        // Task<ExamResultsDTO> GetExamResultsAsync(int examId, int teacherId);
 
         /// <summary>
         /// Calculate exam result for a student
         /// </summary>
-        Task<ResultDTO> CalculateExamResultAsync(int examId, int studentId);
+        // Task<ResultDTO> CalculateExamResultAsync(int examId, int studentId);
 
         /// <summary>
         /// Grade a subjective response
         /// </summary>
-        Task<bool> GradeSubjectiveResponseAsync(int responseId, int evaluatorId, decimal marksObtained);
+        // Task<bool> GradeSubjectiveResponseAsync(int responseId, int evaluatorId, decimal marksObtained);
 
         /// <summary>
         /// Publish result for student
         /// </summary>
-        Task<bool> PublishResultAsync(int resultId, int teacherId);
+        // Task<bool> PublishResultAsync(int resultId, int teacherId);
 
         /// <summary>
         /// Publish all results for an exam (bulk operation)
         /// </summary>
-        Task<dynamic> PublishExamResultsAsync(int examId, int teacherId, decimal passingPercentage = 50);
+        // Task<dynamic> PublishExamResultsAsync(int examId, int teacherId, decimal passingPercentage = 50);
 
         /// <summary>
         /// Auto-grade MCQ responses for an exam
         /// </summary>
-        Task<int> AutoGradeMCQResponsesAsync(int examId);
+        // Task<int> AutoGradeMCQResponsesAsync(int examId);
 
         /// <summary>
         /// Get exam's total marks
@@ -98,7 +95,7 @@ namespace QuizPortalAPI.Services
         /// <summary>
         /// Get student's total marks in an exam
         /// </summary>
-        Task<decimal> GetStudentTotalMarksAsync(int examId, int studentId);
+        // Task<decimal> GetStudentTotalMarksAsync(int examId, int studentId);
 
         /// <summary>
         /// Get student's rank in exam
@@ -113,7 +110,7 @@ namespace QuizPortalAPI.Services
         /// <summary>
         /// Check if result exists
         /// </summary>
-        Task<bool> ResultExistsAsync(int examId, int studentId);
+        // Task<bool> ResultExistsAsync(int examId, int studentId);
 
         // ============ EXAM PUBLICATION ENDPOINTS ============
 

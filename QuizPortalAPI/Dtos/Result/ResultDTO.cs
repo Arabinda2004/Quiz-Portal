@@ -37,5 +37,6 @@ namespace QuizPortalAPI.DTOs.Result
         public DateTime? SubmittedAt { get; set; }
 
         public DateTime CreatedAt { get; set; }
+
     }
 }

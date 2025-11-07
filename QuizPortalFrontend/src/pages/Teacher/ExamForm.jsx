@@ -479,7 +479,7 @@ export default function ExamForm() {
                   id="scheduleStart"
                   type="datetime-local"
                   name="scheduleStart"
-                  value={formData.scheduleStart}
+                  value={formData.scheduleStart ? formData.scheduleStart.slice(0, 16) : ''}
                   onChange={handleInputChange}
                 />
                 {validationErrors.scheduleStart && (

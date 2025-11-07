@@ -580,38 +580,38 @@ export const resultService = {
     }
   },
 
-  // Get result statistics for an exam
-  getResultStatistics: async (examId) => {
-    try {
-      const response = await api.get(`/results/exams/${examId}/statistics`)
-      console.log("Statistics Response:", response.data)
-      return response.data.data
-    } catch (error) {
-      throw error.response?.data || error.message
-    }
-  },
+  // // Get result statistics for an exam
+  // getResultStatistics: async (examId) => {
+  //   try {
+  //     const response = await api.get(`/results/exams/${examId}/statistics`)
+  //     console.log("Statistics Response:", response.data)
+  //     return response.data.data
+  //   } catch (error) {
+  //     throw error.response?.data || error.message
+  //   }
+  // },
 
-  // Get result summary for an exam
-  getResultSummary: async (examId) => {
-    try {
-      const response = await api.get(`/results/exams/${examId}/summary`)
-      console.log("Summary Response:", response.data)
-      return response.data.data
-    } catch (error) {
-      throw error.response?.data || error.message
-    }
-  },
+  // // Get result summary for an exam
+  // getResultSummary: async (examId) => {
+  //   try {
+  //     const response = await api.get(`/results/exams/${examId}/summary`)
+  //     console.log("Summary Response:", response.data)
+  //     return response.data.data
+  //   } catch (error) {
+  //     throw error.response?.data || error.message
+  //   }
+  // },
 
-  // Get pass/fail breakdown for an exam
-  getPassFailBreakdown: async (examId) => {
-    try {
-      const response = await api.get(`/results/exams/${examId}/pass-fail`)
-      console.log("Pass/Fail Response:", response.data)
-      return response.data.data
-    } catch (error) {
-      throw error.response?.data || error.message
-    }
-  },
+  // // Get pass/fail breakdown for an exam
+  // getPassFailBreakdown: async (examId) => {
+  //   try {
+  //     const response = await api.get(`/results/exams/${examId}/pass-fail`)
+  //     console.log("Pass/Fail Response:", response.data)
+  //     return response.data.data
+  //   } catch (error) {
+  //     throw error.response?.data || error.message
+  //   }
+  // },
 
   // Publish exam results
   publishExam: async (examId, data) => {
@@ -647,15 +647,15 @@ export const resultService = {
   },
 
   // Get specific exam result for logged-in student
-  getMyExamResult: async (examId) => {
-    try {
-      const response = await api.get(`/results/exams/${examId}`)
-      console.log("My Exam Result Response:", response.data)
-      return response.data.data
-    } catch (error) {
-      throw error.response?.data || error.message
-    }
-  },
+  // getMyExamResult: async (examId) => {
+  //   try {
+  //     const response = await api.get(`/results/exams/${examId}`)
+  //     console.log("My Exam Result Response:", response.data)
+  //     return response.data.data
+  //   } catch (error) {
+  //     throw error.response?.data || error.message
+  //   }
+  // },
 
   // Get exam result details for logged-in student
   getExamResultDetails: async (examId) => {
@@ -668,18 +668,18 @@ export const resultService = {
     }
   },
 
-  // Get all student results (for student dashboard)
-  getMyResults: async (page = 1, pageSize = 10) => {
-    try {
-      const response = await api.get(`/results/my-results`, {
-        params: { page, pageSize },
-      })
-      console.log("My Results Response:", response.data.data)
-      return response.data.data || []
-    } catch (error) {
-      throw error.response?.data || error.message
-    }
-  },
+  // // Get all student results (for student dashboard)
+  // getMyResults: async (page = 1, pageSize = 10) => {
+  //   try {
+  //     const response = await api.get(`/results/my-results`, {
+  //       params: { page, pageSize },
+  //     })
+  //     console.log("My Results Response:", response.data.data)
+  //     return response.data.data || []
+  //   } catch (error) {
+  //     throw error.response?.data || error.message
+  //   }
+  // },
 
   getMyCompletedExams: async (page = 1, pageSize = 100) => {
     try {

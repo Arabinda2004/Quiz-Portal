@@ -353,7 +353,7 @@ export default function ResultDetail() {
   const percentage = resultDetails?.percentage || 0
   const totalMarks = resultDetails?.totalMarks || 0
   const examTotalMarks = resultDetails?.examTotalMarks || 0
-  const isPassed = percentage >= 50
+  const isPassed = percentage >= (resultDetails?.passingPercentage || 40)
   const correctCount = resultDetails?.correctAnswers || 0
   const totalQuestions = resultDetails?.totalQuestions || 0
   const unansweredCount = resultDetails?.unansweredCount || 0

@@ -12,28 +12,20 @@ namespace QuizPortalAPI.Controllers
     public class ResultController : ControllerBase
     {
         private readonly IResultService _resultService;
-        private readonly IExamService _examService;
-        private readonly IGradingService _gradingService;
         private readonly ILogger<ResultController> _logger;
 
         public ResultController(
             IResultService resultService,
-            IExamService examService,
-            IGradingService gradingService,
             ILogger<ResultController> logger)
         {
             _resultService = resultService;
-            _examService = examService;
-            _gradingService = gradingService;
             _logger = logger;
         }
 
-        private int GetLoggedInUserId()
+        private int? GetLoggedInUserId()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out var userId))
-                return userId;
-            return 0;
+            return int.TryParse(userIdClaim, out var userId) ? userId : (int?)null;
         }
 
         /// <summary>
@@ -42,18 +34,18 @@ namespace QuizPortalAPI.Controllers
         /// </summary>
         [HttpGet("my-completed-exams")]
         [Authorize(Roles = "Student")]
-        public async Task<IActionResult> GetMyCompletedExams([FromQuery] int page = 1, [FromQuery] int pageSize = 100)
+        public async Task<IActionResult> GetMyCompletedExams([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
                 if (page <= 0) page = 1;
-                if (pageSize <= 0) pageSize = 100;
+                if (pageSize <= 0) pageSize = 10;
 
                 var studentId = GetLoggedInUserId();
-                if (studentId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (studentId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var results = await _resultService.GetStudentResultsAsync(studentId, page, pageSize);
+                var results = await _resultService.GetStudentResultsAsync(studentId.Value, page, pageSize);
 
                 _logger.LogInformation($"Student {studentId} retrieved their completed exams - {results.Count} total");
                 return Ok(new
@@ -73,99 +65,92 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        /// <summary>
-        /// Get all exam attempts for logged-in student
-        /// GET /api/results/my-results
-        /// </summary>
-        [HttpGet("my-results")]
-        [Authorize(Roles = "Student")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetMyResults([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                if (page <= 0) page = 1;
-                if (pageSize <= 0) pageSize = 10;
+        // /// <summary>
+        // /// Get all exam attempts for logged-in student
+        // /// GET /api/results/my-results
+        // /// </summary>
+        // [HttpGet("my-results")]
+        // [Authorize(Roles = "Student")]
+        // public async Task<IActionResult> GetMyResults([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        // {
+        //     try
+        //     {
+        //         if (page <= 0) page = 1;
+        //         if (pageSize <= 0) pageSize = 10;
 
-                var studentId = GetLoggedInUserId();
-                if (studentId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+        //         var studentId = GetLoggedInUserId();
+        //         if (studentId == null)
+        //             return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var results = await _resultService.GetStudentResultsAsync(studentId, page, pageSize);
+        //         var results = await _resultService.GetStudentResultsAsync(studentId.Value, page, pageSize);
 
-                results = results.Where(r => r.Status == "Graded").ToList();
+        //         results = results.Where(r => r.Status == "Graded").ToList();
 
-                _logger.LogInformation($"Student {studentId} retrieved their exam results - {results.Count} published");
-                return Ok(new
-                {
-                    success = true,
-                    page = page,
-                    pageSize = pageSize,
-                    totalCount = results.Count,
-                    data = results
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving student results: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while retrieving your results" });
-            }
-        }
+        //         _logger.LogInformation($"Student {studentId} retrieved their exam results - {results.Count} published");
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             page = page,
+        //             pageSize = pageSize,
+        //             totalCount = results.Count,
+        //             data = results
+        //         });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving student results: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while retrieving your results" });
+        //     }
+        // }
 
-        /// <summary>
-        /// Get specific exam result for logged-in student
-        /// GET /api/results/exams/{examId}
-        /// Only returns result if it has been published by teacher (Status='Graded')
-        /// </summary>
-        [HttpGet("exams/{examId}")]
-        [Authorize(Roles = "Student")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetMyExamResult(int examId)
-        {
-            try
-            {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
+        // /// <summary>
+        // /// Get specific exam result for logged-in student
+        // /// GET /api/results/exams/{examId}
+        // /// Only returns result if it has been published by teacher (Status='Graded')
+        // /// </summary>
+        // [HttpGet("exams/{examId}")]
+        // [Authorize(Roles = "Student")]
+        // public async Task<IActionResult> GetMyExamResult(int examId)
+        // {
+        //     try
+        //     {
+        //         if (examId <= 0)
+        //             return BadRequest(new { message = "Invalid exam ID" });
 
-                var studentId = GetLoggedInUserId();
-                if (studentId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+        //         var studentId = GetLoggedInUserId();
+        //         if (studentId == null)
+        //             return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var result = await _resultService.GetStudentExamResultAsync(examId, studentId);
-                if (result == null)
-                    return NotFound(new { message = "Result not found" });
+        //         var result = await _resultService.GetStudentExamResultAsync(examId, studentId.Value);
+        //         if (result == null)
+        //             return NotFound(new { message = "Result not found" });
 
-                if (result.Status != "Graded")
-                {
-                    _logger.LogWarning($"Student {studentId} attempted to view unpublished result for exam {examId}");
-                    return Forbid();
-                }
+        //         if (result.Status != "Graded")
+        //         {
+        //             _logger.LogWarning($"Student {studentId} attempted to view unpublished result for exam {examId}");
+        //             return Forbid();
+        //         }
 
-                _logger.LogInformation($"Student {studentId} retrieved result for exam {examId}");
-                return Ok(new
-                {
-                    success = true,
-                    data = result
-                });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                _logger.LogWarning($"Unauthorized access attempt to exam result");
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving exam result: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while retrieving the exam result" });
-            }
-        }
+        //         _logger.LogInformation($"Student {studentId} retrieved result for exam {examId}");
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             data = result
+        //         });
+        //     }
+        //     catch (UnauthorizedAccessException)
+        //     {
+        //         _logger.LogWarning($"Unauthorized access attempt to exam result");
+        //         return Forbid();
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving exam result: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while retrieving the exam result" });
+        //     }
+        // }
 
         /// <summary>
         /// Get result details with question-wise breakdown for logged-in student
@@ -182,11 +167,10 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "Invalid exam ID" });
 
                 var studentId = GetLoggedInUserId();
-                if (studentId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (studentId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                // ✅ SECURITY: First check if result is published
-                var result = await _resultService.GetStudentExamResultAsync(examId, studentId);
+                var result = await _resultService.GetStudentExamResultAsync(examId, studentId.Value);
                 if (result == null)
                     return NotFound(new { message = "Result not found" });
 
@@ -196,7 +180,7 @@ namespace QuizPortalAPI.Controllers
                     return Forbid();
                 }
 
-                var resultDetails = await _resultService.GetExamResultDetailsAsync(examId, studentId);
+                var resultDetails = await _resultService.GetExamResultDetailsAsync(examId, studentId.Value);
                 if (resultDetails == null)
                     return NotFound(new { message = "Result not found" });
 
@@ -220,7 +204,7 @@ namespace QuizPortalAPI.Controllers
         }
 
         /// <summary>
-        /// Get all results for an exam (Teacher/Admin only)
+        /// Get all results for an exam (Teacher only)
         /// GET /api/results/exams/{examId}/all-results
         /// </summary>
         [HttpGet("exams/{examId}/all-results")]
@@ -236,10 +220,10 @@ namespace QuizPortalAPI.Controllers
                 if (pageSize <= 0) pageSize = 10;
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var results = await _resultService.GetExamAllResultsAsync(examId, teacherId, page, pageSize);
+                var results = await _resultService.GetExamAllResultsAsync(examId, teacherId.Value, page, pageSize);
 
                 _logger.LogInformation($"Teacher {teacherId} retrieved results for exam {examId}");
                 return Ok(new
@@ -267,218 +251,218 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        /// <summary>
-        /// Get result for specific student in an exam (Teacher/Admin only)
-        /// GET /api/results/exams/{examId}/students/{studentId}
-        /// </summary>
-        [HttpGet("exams/{examId}/students/{studentId}")]
-        [Authorize(Roles = "Teacher")]
-        public async Task<IActionResult> GetStudentExamResult(int examId, int studentId)
-        {
-            try
-            {
-                if (examId <= 0 || studentId <= 0)
-                    return BadRequest(new { message = "Invalid exam or student ID" });
+        // /// <summary>
+        // /// Get result for specific student in an exam (Teacher only)
+        // /// GET /api/results/exams/{examId}/students/{studentId}
+        // /// </summary>
+        // [HttpGet("exams/{examId}/students/{studentId}")]
+        // [Authorize(Roles = "Teacher")]
+        // public async Task<IActionResult> GetStudentExamResult(int examId, int studentId)
+        // {
+        //     try
+        //     {
+        //         if (examId <= 0 || studentId <= 0)
+        //             return BadRequest(new { message = "Invalid exam or student ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+        //         var teacherId = GetLoggedInUserId();
+        //         if (teacherId == null)
+        //             return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var result = await _resultService.GetStudentExamResultForTeacherAsync(examId, studentId, teacherId);
-                if (result == null)
-                    return NotFound(new { message = "Result not found" });
+        //         var result = await _resultService.GetStudentExamResultForTeacherAsync(examId, studentId, teacherId.Value);
+        //         if (result == null)
+        //             return NotFound(new { message = "Result not found" });
 
-                _logger.LogInformation($"Teacher {teacherId} retrieved result for student {studentId} in exam {examId}");
-                return Ok(new
-                {
-                    success = true,
-                    data = result
-                });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving student exam result: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while retrieving the result" });
-            }
-        }
+        //         _logger.LogInformation($"Teacher {teacherId} retrieved result for student {studentId} in exam {examId}");
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             data = result
+        //         });
+        //     }
+        //     catch (UnauthorizedAccessException)
+        //     {
+        //         return Forbid();
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving student exam result: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while retrieving the result" });
+        //     }
+        // }
 
-        /// <summary>
-        /// Get result statistics for an exam (Teacher/Admin only)
-        /// GET /api/results/exams/{examId}/statistics
-        /// </summary>
-        [HttpGet("exams/{examId}/statistics")]
-        [Authorize(Roles = "Teacher")]
-        public async Task<IActionResult> GetResultStatistics(int examId)
-        {
-            try
-            {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
+        // /// <summary>
+        // /// Get result statistics for an exam (Teacher only)
+        // /// GET /api/results/exams/{examId}/statistics
+        // /// </summary>
+        // [HttpGet("exams/{examId}/statistics")]
+        // [Authorize(Roles = "Teacher")]
+        // public async Task<IActionResult> GetResultStatistics(int examId)
+        // {
+        //     try
+        //     {
+        //         if (examId <= 0)
+        //             return BadRequest(new { message = "Invalid exam ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+        //         var teacherId = GetLoggedInUserId();
+        //         if (teacherId == null)
+        //             return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var stats = await _resultService.GetResultStatisticsAsync(examId, teacherId);
+        //         var stats = await _resultService.GetResultStatisticsAsync(examId, teacherId.Value);
 
-                _logger.LogInformation($"Teacher {teacherId} retrieved statistics for exam {examId}");
-                return Ok(new
-                {
-                    success = true,
-                    data = stats
-                });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (InvalidOperationException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving result statistics: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while retrieving statistics" });
-            }
-        }
+        //         _logger.LogInformation($"Teacher {teacherId} retrieved statistics for exam {examId}");
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             data = stats
+        //         });
+        //     }
+        //     catch (UnauthorizedAccessException)
+        //     {
+        //         return Forbid();
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         return NotFound(new { message = ex.Message });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving result statistics: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while retrieving statistics" });
+        //     }
+        // }
 
-        /// <summary>
-        /// Get result summary (grades count, pass/fail, etc.)
-        /// GET /api/results/exams/{examId}/summary
-        /// </summary>
-        [HttpGet("exams/{examId}/summary")]
-        [Authorize(Roles = "Teacher")]
-        public async Task<IActionResult> GetResultSummary(int examId)
-        {
-            try
-            {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
+        // /// <summary>
+        // /// Get result summary (grades count, pass/fail, etc.)
+        // /// GET /api/results/exams/{examId}/summary
+        // /// </summary>
+        // [HttpGet("exams/{examId}/summary")]
+        // [Authorize(Roles = "Teacher")]
+        // public async Task<IActionResult> GetResultSummary(int examId)
+        // {
+        //     try
+        //     {
+        //         if (examId <= 0)
+        //             return BadRequest(new { message = "Invalid exam ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+        //         var teacherId = GetLoggedInUserId();
+        //         if (teacherId == null)
+        //             return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var summary = await _resultService.GetResultSummaryAsync(examId, teacherId);
+        //         var summary = await _resultService.GetResultSummaryAsync(examId, teacherId.Value);
 
-                _logger.LogInformation($"Teacher {teacherId} retrieved result summary for exam {examId}");
-                return Ok(new
-                {
-                    success = true,
-                    data = summary
-                });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (InvalidOperationException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving result summary: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while retrieving result summary" });
-            }
-        }
+        //         _logger.LogInformation($"Teacher {teacherId} retrieved result summary for exam {examId}");
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             data = summary
+        //         });
+        //     }
+        //     catch (UnauthorizedAccessException)
+        //     {
+        //         return Forbid();
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         return NotFound(new { message = ex.Message });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving result summary: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while retrieving result summary" });
+        //     }
+        // }
 
-        /// <summary>
-        /// Get passed vs failed breakdown for an exam
-        /// GET /api/results/exams/{examId}/pass-fail
-        /// </summary>
-        [HttpGet("exams/{examId}/pass-fail")]
-        [Authorize(Roles = "Teacher")]
-        public async Task<IActionResult> GetPassFailBreakdown(int examId)
-        {
-            try
-            {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
+        // /// <summary>
+        // /// Get passed vs failed breakdown for an exam
+        // /// GET /api/results/exams/{examId}/pass-fail
+        // /// </summary>
+        // [HttpGet("exams/{examId}/pass-fail")]
+        // [Authorize(Roles = "Teacher")]
+        // public async Task<IActionResult> GetPassFailBreakdown(int examId)
+        // {
+        //     try
+        //     {
+        //         if (examId <= 0)
+        //             return BadRequest(new { message = "Invalid exam ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+        //         var teacherId = GetLoggedInUserId();
+        //         if (teacherId == null)
+        //             return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var breakdown = await _resultService.GetPassFailBreakdownAsync(examId, teacherId);
+        //         var breakdown = await _resultService.GetPassFailBreakdownAsync(examId, teacherId.Value);
 
-                _logger.LogInformation($"Teacher {teacherId} retrieved pass/fail breakdown for exam {examId}");
-                return Ok(new
-                {
-                    success = true,
-                    data = breakdown
-                });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (InvalidOperationException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving pass/fail breakdown: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while retrieving pass/fail data" });
-            }
-        }
+        //         _logger.LogInformation($"Teacher {teacherId} retrieved pass/fail breakdown for exam {examId}");
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             data = breakdown
+        //         });
+        //     }
+        //     catch (UnauthorizedAccessException)
+        //     {
+        //         return Forbid();
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         return NotFound(new { message = ex.Message });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving pass/fail breakdown: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while retrieving pass/fail data" });
+        //     }
+        // }
 
-        /// <summary>
-        /// Publish all results for an exam (Teacher/Admin only)
-        /// POST /api/results/exams/{examId}/publish-results
-        /// Marks all student results as "Graded" and makes them visible to students
-        /// </summary>
-        [HttpPost("exams/{examId}/publish-results")]
-        [Authorize(Roles = "Teacher")]
-        public async Task<IActionResult> PublishExamResults(int examId, [FromBody] SubmitResultDTO submitResultDto)
-        {
-            try
-            {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
+        // /// <summary>
+        // /// Publish all results for an exam (Teacher only)
+        // /// POST /api/results/exams/{examId}/publish-results
+        // /// Marks all student results as "Graded" and makes them visible to students
+        // /// </summary>
+        // [HttpPost("exams/{examId}/publish-results")]
+        // [Authorize(Roles = "Teacher")]
+        // public async Task<IActionResult> PublishExamResults(int examId, [FromBody] SubmitResultDTO submitResultDto)
+        // {
+        //     try
+        //     {
+        //         if (examId <= 0)
+        //             return BadRequest(new { message = "Invalid exam ID" });
 
-                if (!ModelState.IsValid)
-                    return BadRequest(ModelState);
+        //         if (!ModelState.IsValid)
+        //             return BadRequest(ModelState);
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+        //         var teacherId = GetLoggedInUserId();
+        //         if (teacherId == null)
+        //             return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var result = await _resultService.PublishExamResultsAsync(
-                    examId, 
-                    teacherId, 
-                    submitResultDto.PassingPercentage);
+        //         var result = await _resultService.PublishExamResultsAsync(
+        //             examId, 
+        //             teacherId.Value, 
+        //             submitResultDto.PassingPercentage);
 
-                _logger.LogInformation($"Teacher {teacherId} published results for exam {examId}");
-                return Ok(result);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                _logger.LogWarning($"Unauthorized access attempt to publish results for exam {examId}");
-                return Forbid();
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning($"Invalid operation: {ex.Message}");
-                return Conflict(new { message = ex.Message }); // 409 if already published
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error publishing exam results: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while publishing results" });
-            }
-        }
+        //         _logger.LogInformation($"Teacher {teacherId} published results for exam {examId}");
+        //         return Ok(result);
+        //     }
+        //     catch (UnauthorizedAccessException)
+        //     {
+        //         _logger.LogWarning($"Unauthorized access attempt to publish results for exam {examId}");
+        //         return Forbid();
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         _logger.LogWarning($"Invalid operation: {ex.Message}");
+        //         return Conflict(new { message = ex.Message }); // 409 if already published
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error publishing exam results: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while publishing results" });
+        //     }
+        // }
 
         /// <summary>
         /// Publish exam - checks if all responses are graded first
@@ -498,15 +482,15 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(ModelState);
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
                 if (request.PassingPercentage < 0 || request.PassingPercentage > 100)
                     return BadRequest(new { message = "Passing percentage must be between 0 and 100" });
 
                 var result = await _resultService.PublishExamAsync(
                     examId, 
-                    teacherId, 
+                    teacherId.Value, 
                     request.PassingPercentage,
                     request.PublicationNotes);
 
@@ -535,47 +519,47 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        /// <summary>
-        /// Get grading progress for an exam
-        /// GET /api/results/exams/{examId}/grading-progress
-        /// </summary>
-        [HttpGet("exams/{examId}/grading-progress")]
-        [Authorize(Roles = "Teacher")]
-        public async Task<IActionResult> GetGradingProgress(int examId)
-        {
-            try
-            {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
+        // /// <summary>
+        // /// Get grading progress for an exam
+        // /// GET /api/results/exams/{examId}/grading-progress
+        // /// </summary>
+        // [HttpGet("exams/{examId}/grading-progress")]
+        // [Authorize(Roles = "Teacher")]
+        // public async Task<IActionResult> GetGradingProgress(int examId)
+        // {
+        //     try
+        //     {
+        //         if (examId <= 0)
+        //             return BadRequest(new { message = "Invalid exam ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+        //         var teacherId = GetLoggedInUserId();
+        //         if (teacherId == null)
+        //             return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var progress = await _resultService.GetGradingProgressAsync(examId, teacherId);
+        //         var progress = await _resultService.GetGradingProgressAsync(examId, teacherId.Value);
 
-                _logger.LogInformation($"Teacher {teacherId} retrieved grading progress for exam {examId}");
-                return Ok(new
-                {
-                    success = true,
-                    data = progress
-                });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (InvalidOperationException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving grading progress: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while retrieving grading progress" });
-            }
-        }
+        //         _logger.LogInformation($"Teacher {teacherId} retrieved grading progress for exam {examId}");
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             data = progress
+        //         });
+        //     }
+        //     catch (UnauthorizedAccessException)
+        //     {
+        //         return Forbid();
+        //     }
+        //     catch (InvalidOperationException ex)
+        //     {
+        //         return NotFound(new { message = ex.Message });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error retrieving grading progress: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while retrieving grading progress" });
+        //     }
+        // }
 
         /// <summary>
         /// Get exam publication status
@@ -591,10 +575,10 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "Invalid exam ID" });
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var status = await _resultService.GetExamPublicationStatusAsync(examId, teacherId);
+                var status = await _resultService.GetExamPublicationStatusAsync(examId, teacherId.Value);
 
                 _logger.LogInformation($"Teacher {teacherId} retrieved publication status for exam {examId}");
                 return Ok(new
@@ -633,12 +617,12 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "Invalid exam ID" });
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (teacherId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
                 var result = await _resultService.UnpublishExamAsync(
                     examId, 
-                    teacherId,
+                    teacherId.Value,
                     request?.Reason);
 
                 _logger.LogInformation($"Teacher {teacherId} unpublished exam {examId}");
@@ -678,10 +662,10 @@ namespace QuizPortalAPI.Controllers
             try
             {
                 var studentId = GetLoggedInUserId();
-                if (studentId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+                if (studentId == null)
+                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
-                var results = await _resultService.GetPublishedExamResultsAsync(studentId);
+                var results = await _resultService.GetPublishedExamResultsAsync(studentId.Value);
 
                 _logger.LogInformation($"Student {studentId} retrieved published exam results - {results.Count} total");
                 return Ok(new
@@ -699,38 +683,38 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        /// <summary>
-        /// Recalculate ranks for all students in an exam (Teacher/Admin only)
-        /// POST /api/results/exams/{examId}/recalculate-ranks
-        /// </summary>
-        [HttpPost("exams/{examId}/recalculate-ranks")]
-        [Authorize(Roles = "Teacher")]
-        public async Task<IActionResult> RecalculateExamRanks(int examId)
-        {
-            try
-            {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
+        // /// <summary>
+        // /// Recalculate ranks for all students in an exam (Teacher/Admin only)
+        // /// POST /api/results/exams/{examId}/recalculate-ranks
+        // /// </summary>
+        // [HttpPost("exams/{examId}/recalculate-ranks")]
+        // [Authorize(Roles = "Teacher")]
+        // public async Task<IActionResult> RecalculateExamRanks(int examId)
+        // {
+        //     try
+        //     {
+        //         if (examId <= 0)
+        //             return BadRequest(new { message = "Invalid exam ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == 0)
-                    return Unauthorized(new { message = "Invalid user ID" });
+        //         var teacherId = GetLoggedInUserId();
+        //         if (teacherId == 0)
+        //             return Unauthorized(new { message = "Invalid user ID" });
 
-                await _resultService.RecalculateExamRanksAsync(examId);
+        //         await _resultService.RecalculateExamRanksAsync(examId);
 
-                _logger.LogInformation($"Teacher {teacherId} recalculated ranks for exam {examId}");
-                return Ok(new
-                {
-                    success = true,
-                    message = "Ranks recalculated successfully for all students in the exam"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error recalculating ranks for exam {examId}: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while recalculating ranks" });
-            }
-        }
+        //         _logger.LogInformation($"Teacher {teacherId} recalculated ranks for exam {examId}");
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             message = "Ranks recalculated successfully for all students in the exam"
+        //         });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError($"Error recalculating ranks for exam {examId}: {ex.Message}");
+        //         return StatusCode(StatusCodes.Status500InternalServerError,
+        //             new { message = "An error occurred while recalculating ranks" });
+        //     }
+        // }
     }
 }
