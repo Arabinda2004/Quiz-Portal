@@ -1,7 +1,14 @@
 using Microsoft.EntityFrameworkCore;
+using QuizPortalAPI.DAL.ExamPublicationRepo;
+using QuizPortalAPI.DAL.ResultRepo;
+using QuizPortalAPI.DAL.StudentResponseRepo;
+using QuizPortalAPI.DAL.GradingRecordRepo;
+using QuizPortalAPI.DAL.UserRepo;
 using QuizPortalAPI.Data;
 using QuizPortalAPI.DTOs.Grading;
 using QuizPortalAPI.Models;
+using QuizPortalAPI.DAL.QuestionRepo;
+using QuizPortalAPI.DAL.ExamRepo;
 
 namespace QuizPortalAPI.Services
 {
@@ -10,12 +17,26 @@ namespace QuizPortalAPI.Services
         private readonly AppDbContext _context;
         private readonly ILogger<GradingService> _logger;
         private readonly IExamService _examService;
+        private readonly IExamPublicationRepository _examPublicationRepository;
+        private readonly IResultRepository _resultRepository;
+        private readonly IStudentResponseRepository _studentResponseRepository;
+        private readonly IGradingRecordRepository _gradingRepository;
+        private readonly IQuestionRepository _questionRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly IExamRepository _examRepository;
 
-        public GradingService(AppDbContext context, ILogger<GradingService> logger, IExamService examService)
+        public GradingService(AppDbContext context, ILogger<GradingService> logger, IExamService examService, IExamPublicationRepository examPublicationRepository, IResultRepository resultRepository, IStudentResponseRepository studentResponseRepository, IGradingRecordRepository gradingRepository, IQuestionRepository questionRepository, IExamRepository examRepository, IUserRepository userRepository)
         {
             _context = context;
             _logger = logger;
             _examService = examService;
+            _examPublicationRepository = examPublicationRepository;
+            _resultRepository = resultRepository;
+            _studentResponseRepository = studentResponseRepository;
+            _gradingRepository = gradingRepository;
+            _questionRepository = questionRepository;
+            _examRepository = examRepository;
+            _userRepository = userRepository;
         }
 
         /// <summary>
@@ -29,23 +50,16 @@ namespace QuizPortalAPI.Services
                 if (!isOwner)
                     throw new UnauthorizedAccessException("You can only view responses for your own exams");
 
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.FindExamByIdAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
                 if (DateTime.UtcNow < exam.ScheduleEnd)
                     throw new InvalidOperationException($"Exam has not ended yet. Grading will be available after {exam.ScheduleEnd:yyyy-MM-dd HH:mm:ss} UTC");
 
-                var allResponses = await _context.StudentResponses
-                    .Include(sr => sr.Question)
-                    .Include(sr => sr.Student)
-                    .Where(sr => sr.ExamID == examId)
-                    .OrderByDescending(r => r.SubmittedAt) // latest submission first
-                    .ToListAsync();
+                var allResponses = await _studentResponseRepository.GetAllSubmittedResponsesByExamIdAsync(examId);
 
-                var gradingRecords = await _context.GradingRecords
-                    .Where(gr => allResponses.Select(sr => sr.ResponseID).Contains(gr.ResponseID) && gr.Status == "Graded")
-                    .ToDictionaryAsync(gr => gr.ResponseID, gr => gr); // give me all records that belong to the responses in 'allResponses' and that are graded
+                var gradingRecords = await _gradingRepository.GetAllGradingRecordsFromSubmittedResponsesAsync(allResponses); // give me all records that belong to the responses in 'allResponses' and that are graded
 
                 var pendingResponses = allResponses.Where(sr => !gradingRecords.ContainsKey(sr.ResponseID)).ToList();
 
@@ -110,92 +124,6 @@ namespace QuizPortalAPI.Services
             }
         }
 
-        // /// <summary>
-        // /// Get pending responses for a specific question
-        // /// </summary>
-        // public async Task<PendingResponsesDTO> GetPendingResponsesByQuestionAsync(int examId, int questionId, int teacherId, int page = 1, int pageSize = 10)
-        // {
-        //     try
-        //     {
-        //         var isOwner = await _examService.IsTeacherExamOwnerAsync(examId, teacherId);
-        //         if (!isOwner)
-        //             throw new UnauthorizedAccessException("You can only view responses for your own exams");
-
-        //         var exam = await _context.Exams.FindAsync(examId);
-        //         if (exam == null)
-        //             throw new InvalidOperationException("Exam not found");
-
-        //         if (DateTime.UtcNow < exam.ScheduleEnd)
-        //             throw new InvalidOperationException($"Exam has not ended yet. Grading will be available after {exam.ScheduleEnd:yyyy-MM-dd HH:mm:ss} UTC");
-
-        //         var question = await _context.Questions.FindAsync(questionId);
-        //         if (question == null || question.ExamID != examId)
-        //             throw new InvalidOperationException("Question not found in this exam");
-
-        //         var query = _context.StudentResponses
-        //             .Where(sr => sr.ExamID == examId && sr.QuestionID == questionId)
-        //             .Include(sr => sr.Question)
-        //             .Include(sr => sr.Student)
-        //             .AsQueryable();
-
-        //         var allResponses = await query.ToListAsync();
-        //         var pendingResponses = allResponses
-        //             .Where(sr => _context.GradingRecords
-        //                 .Where(gr => gr.ResponseID == sr.ResponseID && gr.Status == "Graded")
-        //                 .FirstOrDefault() == null)
-        //             .ToList();
-
-        //         var totalPending = pendingResponses.Count;
-        //         var paginatedResponses = pendingResponses
-        //             .OrderByDescending(r => r.SubmittedAt)
-        //             .Skip((page - 1) * pageSize)
-        //             .Take(pageSize)
-        //             .ToList();
-
-        //         var result = new PendingResponsesDTO
-        //         {
-        //             ExamID = examId,
-        //             ExamName = exam.Title,
-        //             TotalPending = totalPending,
-        //             TotalResponses = allResponses.Count,
-        //             Page = page,
-        //             PageSize = pageSize,
-        //             TotalPages = (int)Math.Ceiling((double)totalPending / pageSize),
-        //             Responses = paginatedResponses.Select(sr => new PendingResponseItemDTO
-        //             {
-        //                 ResponseId = sr.ResponseID,
-        //                 QuestionId = sr.QuestionID,
-        //                 QuestionText = sr.Question?.QuestionText ?? "Unknown",
-        //                 StudentId = sr.StudentID,
-        //                 StudentName = sr.Student?.FullName ?? "Unknown",
-        //                 StudentEmail = sr.Student?.Email ?? "Unknown",
-        //                 StudentAnswer = sr.AnswerText,
-        //                 MaxMarks = sr.Question?.Marks ?? 0,
-        //                 SubmittedAt = sr.SubmittedAt,
-        //                 QuestionType = sr.Question?.QuestionType.ToString() ?? "Unknown",
-        //                 PendingQuestionsFromStudent = pendingResponses.Count(r => r.StudentID == sr.StudentID)
-        //             }).ToList()
-        //         };
-
-        //         _logger.LogInformation($"Retrieved {totalPending} pending responses for question {questionId}");
-        //         return result;
-        //     }
-        //     catch (UnauthorizedAccessException ex)
-        //     {
-        //         _logger.LogWarning($"Unauthorized: {ex.Message}");
-        //         throw;
-        //     }
-        //     catch (InvalidOperationException ex)
-        //     {
-        //         _logger.LogWarning($"Invalid operation: {ex.Message}");
-        //         throw;
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         _logger.LogError($"Error getting pending responses by question: {ex.Message}");
-        //         throw;
-        //     }
-        // }
 
         /// <summary>
         /// Get pending responses for a specific student
@@ -208,30 +136,20 @@ namespace QuizPortalAPI.Services
                 if (!isOwner)
                     throw new UnauthorizedAccessException("You can only view responses for your own exams");
 
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.FindExamByIdAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
                 if (DateTime.UtcNow < exam.ScheduleEnd)
                     throw new InvalidOperationException($"Exam has not ended yet. Grading will be available after {exam.ScheduleEnd:yyyy-MM-dd HH:mm:ss} UTC");
 
-                var student = await _context.Users.FindAsync(studentId);
+                var student = await _userRepository.GetUserDetailsByIdAsync(studentId);
                 if (student == null)
                     throw new InvalidOperationException("Student not found");
 
-                var pendingResponses = await _context.StudentResponses
-                    .Include(sr => sr.Question)
-                    .Include(sr => sr.Student)
-                    .Where(sr => sr.ExamID == examId &&
-                                 sr.StudentID == studentId &&
-                                 !_context.GradingRecords
-                                     .Any(gr => gr.ResponseID == sr.ResponseID && gr.Status == "Graded"))
-                    .OrderByDescending(r => r.SubmittedAt)
-                    .ToListAsync();
+                var pendingResponses = await _studentResponseRepository.GetPendingResponsesAsync(examId, studentId);
 
-                var allResponses = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
-                    .ToListAsync();
+                var allResponses = await _studentResponseRepository.GetAllStudentResponsesAsync(examId, studentId);
 
                 var totalPending = pendingResponses.Count;
                 var paginatedResponses = pendingResponses
@@ -291,11 +209,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var response = await _context.StudentResponses
-                    .Include(sr => sr.Question)
-                    .Include(sr => sr.Exam)
-                    .Include(sr => sr.Student)
-                    .FirstOrDefaultAsync(sr => sr.ResponseID == responseId);
+                var response = await _studentResponseRepository.GetStudentResponseIncludingQuestionExamAndStudentByResponseIdAsync(responseId);
 
                 if (response == null)
                 {
@@ -307,9 +221,7 @@ namespace QuizPortalAPI.Services
                 if (!isOwner)
                     throw new UnauthorizedAccessException("You can only grade responses for your own exams");
 
-                var gradingRecord = await _context.GradingRecords
-                    .Include(gr => gr.GradedByTeacher)
-                    .FirstOrDefaultAsync(gr => gr.ResponseID == responseId && gr.Status == "Graded");
+                var gradingRecord = await _gradingRepository.GetGradingRecordWithEvaluatorByResponseIdAsync(responseId);
 
                 return new ResponseForGradingDTO
                 {
@@ -351,10 +263,7 @@ namespace QuizPortalAPI.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                var response = await _context.StudentResponses
-                    .Include(sr => sr.Question)
-                    .Include(sr => sr.Exam)
-                    .FirstOrDefaultAsync(sr => sr.ResponseID == responseId);
+                var response = await _studentResponseRepository.GetstudentResponseByResponseIdAsync(responseId);
 
                 if (response == null)
                     throw new InvalidOperationException("Response not found");
@@ -373,20 +282,19 @@ namespace QuizPortalAPI.Services
                 if (gradeDto.MarksObtained > response.Question?.Marks)
                     throw new ArgumentException($"Marks cannot exceed {response.Question?.Marks}");
 
-                var oldGrading = await _context.GradingRecords
-                    .FirstOrDefaultAsync(gr => gr.ResponseID == responseId && gr.Status == "Graded");
+                var oldGrading = await _gradingRepository.GetGradingRecordUsingResponseIdAsync(responseId);
                 // if there was an old grading, remove it
                 if (oldGrading != null)
                 {
-                    _context.GradingRecords.Remove(oldGrading);
-                    await _context.SaveChangesAsync();
+                    await _gradingRepository.RemoveAsync(oldGrading);
+                    await _gradingRepository.SaveChangesAsync();
                 }
 
                 response.MarksObtained = gradeDto.MarksObtained;
                 response.IsCorrect = gradeDto.MarksObtained > 0;
 
-                _context.StudentResponses.Update(response);
-                await _context.SaveChangesAsync();
+                await _studentResponseRepository.UpdateAsync(response);
+                await _studentResponseRepository.SaveChangesAsync();
 
                 var gradingRecord = new GradingRecord
                 {
@@ -402,8 +310,8 @@ namespace QuizPortalAPI.Services
                     GradedAt = DateTime.UtcNow
                 };
 
-                _context.GradingRecords.Add(gradingRecord);
-                await _context.SaveChangesAsync();
+                await _gradingRepository.AddAsync(gradingRecord);
+                await _gradingRepository.SaveChangesAsync();
 
                 await RecalculateStudentResultAsync(response.ExamID, response.StudentID);
 
@@ -437,247 +345,6 @@ namespace QuizPortalAPI.Services
             }
         }
 
-        // /// <summary>
-        // /// Grade multiple responses in a batch
-        // /// </summary>
-        // public async Task<bool> GradeBatchResponsesAsync(int teacherId, BatchGradeDTO batchGradeDto)
-        // {
-        //     using var transaction = await _context.Database.BeginTransactionAsync();
-        //     try
-        //     {
-        //         var isOwner = await _examService.IsTeacherExamOwnerAsync(batchGradeDto.ExamID, teacherId);
-        //         if (!isOwner)
-        //             throw new UnauthorizedAccessException("You can only grade responses for your own exams");
-
-        //         var exam = await _context.Exams.FindAsync(batchGradeDto.ExamID);
-        //         if (exam == null)
-        //             throw new InvalidOperationException("Exam not found");
-
-        //         if (DateTime.UtcNow < exam.ScheduleEnd)
-        //             throw new InvalidOperationException($"Exam has not ended yet. Grading will be available after {exam.ScheduleEnd:yyyy-MM-dd HH:mm:ss} UTC");
-
-        //         var isPublished = await IsExamPublishedAsync(batchGradeDto.ExamID);
-        //         if (isPublished)
-        //             throw new InvalidOperationException("Cannot grade responses for a published exam. Please unpublish the exam first to make changes.");
-
-        //         var question = await _context.Questions.FindAsync(batchGradeDto.QuestionID);
-        //         if (question == null || question.ExamID != batchGradeDto.ExamID)
-        //             throw new InvalidOperationException("Question not found in this exam");
-
-        //         // ✅ Process each response
-        //         var affectedStudents = new HashSet<int>();
-        //         foreach (var gradeItem in batchGradeDto.Responses)
-        //         {
-        //             // Get response
-        //             var response = await _context.StudentResponses
-        //                 .Include(sr => sr.Question)
-        //                 .FirstOrDefaultAsync(sr => sr.ResponseID == gradeItem.ResponseID);
-
-        //             if (response == null)
-        //             {
-        //                 _logger.LogWarning($"Response {gradeItem.ResponseID} not found, skipping");
-        //                 continue;
-        //             }
-
-        //             // ✅ Validate marks
-        //             if (gradeItem.MarksObtained > response.Question?.Marks)
-        //                 throw new ArgumentException($"Marks for response {gradeItem.ResponseID} cannot exceed {response.Question?.Marks}");
-
-        //             // Remove old grading if exists
-        //             var oldGrading = await _context.GradingRecords
-        //                 .FirstOrDefaultAsync(gr => gr.ResponseID == gradeItem.ResponseID && gr.Status == "Graded");
-        //             if (oldGrading != null)
-        //                 _context.GradingRecords.Remove(oldGrading);
-
-        //             // Update response
-        //             response.MarksObtained = gradeItem.MarksObtained;
-        //             // IsCorrect indicates if the student got marks (any marks > 0 = partially/fully correct)
-        //             // A grade of 0 means incorrect answer. The response is still "graded"
-        //             response.IsCorrect = gradeItem.MarksObtained > 0;
-        //             _context.StudentResponses.Update(response);
-
-        //             // Create grading record
-        //             var gradingRecord = new GradingRecord
-        //             {
-        //                 ResponseID = gradeItem.ResponseID,
-        //                 QuestionID = response.QuestionID,
-        //                 StudentID = response.StudentID,
-        //                 GradedByTeacherID = teacherId,
-        //                 MarksObtained = gradeItem.MarksObtained,
-        //                 Feedback = gradeItem.Feedback,
-        //                 Comment = gradeItem.Comment,
-        //                 Status = "Graded",
-        //                 GradedAt = DateTime.UtcNow
-        //             };
-        //             _context.GradingRecords.Add(gradingRecord);
-        //             affectedStudents.Add(response.StudentID);
-        //         }
-
-        //         await _context.SaveChangesAsync();
-
-        //         // ✅ Recalculate results for affected students
-        //         foreach (var studentId in affectedStudents)
-        //         {
-        //             await RecalculateStudentResultAsync(batchGradeDto.ExamID, studentId);
-        //         }
-
-        //         await transaction.CommitAsync();
-        //         _logger.LogInformation($"Batch graded {batchGradeDto.Responses.Count} responses by teacher {teacherId}");
-        //         return true;
-        //     }
-        //     catch (ArgumentException ex)
-        //     {
-        //         await transaction.RollbackAsync();
-        //         _logger.LogWarning($"Validation error: {ex.Message}");
-        //         throw;
-        //     }
-        //     catch (UnauthorizedAccessException ex)
-        //     {
-        //         await transaction.RollbackAsync();
-        //         _logger.LogWarning($"Unauthorized: {ex.Message}");
-        //         throw;
-        //     }
-        //     catch (InvalidOperationException ex)
-        //     {
-        //         await transaction.RollbackAsync();
-        //         _logger.LogWarning($"Invalid operation: {ex.Message}");
-        //         throw;
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         await transaction.RollbackAsync();
-        //         _logger.LogError($"Error grading batch responses: {ex.Message}");
-        //         throw;
-        //     }
-        // }
-
-        // /// <summary>
-        // /// Get grading history for a response
-        // /// </summary>
-        // public async Task<IEnumerable<GradingRecordDTO>> GetGradingHistoryAsync(int responseId)
-        // {
-        //     try
-        //     {
-        //         var records = await _context.GradingRecords
-        //             .Where(gr => gr.ResponseID == responseId)
-        //             .Include(gr => gr.GradedByTeacher)
-        //             .Include(gr => gr.Student)
-        //             .OrderByDescending(gr => gr.GradedAt)
-        //             .ToListAsync();
-
-        //         return records.Select(gr => new GradingRecordDTO
-        //         {
-        //             GradingId = gr.GradingID,
-        //             ResponseId = gr.ResponseID,
-        //             QuestionId = gr.QuestionID,
-        //             StudentId = gr.StudentID,
-        //             StudentName = gr.Student?.FullName ?? "Unknown",
-        //             GradedByTeacherId = gr.GradedByTeacherID,
-        //             GradedByTeacher = gr.GradedByTeacher?.FullName ?? "Unknown",
-        //             MarksObtained = gr.MarksObtained,
-        //             Feedback = gr.Feedback,
-        //             Comment = gr.Comment,
-        //             GradedAt = gr.GradedAt
-        //         }).ToList();
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         _logger.LogError($"Error getting grading history: {ex.Message}");
-        //         throw;
-        //     }
-        // }
-
-        /// <summary>
-        /// Get grading history for all responses of a question
-        /// </summary>
-        public async Task<IEnumerable<GradingRecordDTO>> GetQuestionGradingHistoryAsync(int examId, int questionId, int teacherId)
-        {
-            try
-            {
-                // ✅ Verify teacher owns the exam
-                var isOwner = await _examService.IsTeacherExamOwnerAsync(examId, teacherId);
-                if (!isOwner)
-                    throw new UnauthorizedAccessException("You can only view grading history for your own exams");
-
-                var records = await _context.GradingRecords
-                    .Where(gr => gr.QuestionID == questionId)
-                    .Include(gr => gr.GradedByTeacher)
-                    .Include(gr => gr.Student)
-                    .OrderByDescending(gr => gr.GradedAt)
-                    .ToListAsync();
-
-                return records.Select(gr => new GradingRecordDTO
-                {
-                    GradingId = gr.GradingID,
-                    ResponseId = gr.ResponseID,
-                    QuestionId = gr.QuestionID,
-                    StudentId = gr.StudentID,
-                    StudentName = gr.Student?.FullName ?? "Unknown",
-                    GradedByTeacherId = gr.GradedByTeacherID,
-                    GradedByTeacher = gr.GradedByTeacher?.FullName ?? "Unknown",
-                    MarksObtained = gr.MarksObtained,
-                    Feedback = gr.Feedback,
-                    Comment = gr.Comment,
-                    GradedAt = gr.GradedAt
-                }).ToList();
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Unauthorized: {ex.Message}");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error getting question grading history: {ex.Message}");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// Get grading history for a student
-        /// </summary>
-        public async Task<IEnumerable<GradingRecordDTO>> GetStudentGradingHistoryAsync(int examId, int studentId, int teacherId)
-        {
-            try
-            {
-                // ✅ Verify teacher owns the exam
-                var isOwner = await _examService.IsTeacherExamOwnerAsync(examId, teacherId);
-                if (!isOwner)
-                    throw new UnauthorizedAccessException("You can only view grading history for your own exams");
-
-                var records = await _context.GradingRecords
-                    .Where(gr => gr.StudentID == studentId)
-                    .Include(gr => gr.GradedByTeacher)
-                    .Include(gr => gr.Student)
-                    .OrderByDescending(gr => gr.GradedAt)
-                    .ToListAsync();
-
-                return records.Select(gr => new GradingRecordDTO
-                {
-                    GradingId = gr.GradingID,
-                    ResponseId = gr.ResponseID,
-                    QuestionId = gr.QuestionID,
-                    StudentId = gr.StudentID,
-                    StudentName = gr.Student?.FullName ?? "Unknown",
-                    GradedByTeacherId = gr.GradedByTeacherID,
-                    GradedByTeacher = gr.GradedByTeacher?.FullName ?? "Unknown",
-                    MarksObtained = gr.MarksObtained,
-                    Feedback = gr.Feedback,
-                    Comment = gr.Comment,
-                    GradedAt = gr.GradedAt
-                }).ToList();
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning($"Unauthorized: {ex.Message}");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error getting student grading history: {ex.Message}");
-                throw;
-            }
-        }
 
         /// <summary>
         /// Get grading statistics for an exam
@@ -690,13 +357,11 @@ namespace QuizPortalAPI.Services
                 if (!isOwner)
                     throw new UnauthorizedAccessException("You can only view statistics for your own exams");
 
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.FindExamByIdAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
-                var questions = await _context.Questions
-                    .Where(q => q.ExamID == examId)
-                    .ToListAsync();
+                var questions = await _questionRepository.GetExamQuestionsByExamIdAsync(examId);
 
                 var questionsWithResponses = new List<QuestionGradingStatsDTO>();
                 int totalResponses = 0;
@@ -704,17 +369,12 @@ namespace QuizPortalAPI.Services
 
                 foreach (var question in questions)
                 {
-                    var responses = await _context.StudentResponses
-                        .Where(sr => sr.QuestionID == question.QuestionID)
-                        .ToListAsync();
+                    var responses = await _studentResponseRepository.GetStudentResponseForAQuestionByIdAsync(question.QuestionID);
 
-                    var gradedCount = await _context.GradingRecords
-                        .CountAsync(gr => gr.QuestionID == question.QuestionID && gr.Status == "Graded");
+                    var gradedCount = await _gradingRepository.GetGradingRecordsBasedOnQuestionIdAsync(question.QuestionID);
 
                     var averageMarks = gradedCount > 0
-                        ? await _context.GradingRecords
-                            .Where(gr => gr.QuestionID == question.QuestionID && gr.Status == "Graded")
-                            .AverageAsync(gr => (double)gr.MarksObtained)
+                        ? await _gradingRepository.GetAverageMarksByQuestionIdAsync(question.QuestionID)
                         : 0;
 
                     questionsWithResponses.Add(new QuestionGradingStatsDTO
@@ -733,18 +393,12 @@ namespace QuizPortalAPI.Services
                     totalGraded += gradedCount;
                 }
 
-                var uniqueStudentsResponded = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId)
-                    .Select(sr => sr.StudentID)
-                    .Distinct()
-                    .CountAsync();
+                var uniqueStudentsResponded = await _studentResponseRepository.GetUniqueStudentResponseCountAsync(examId);
 
                 var studentsFullyGraded = 0;
                 if (uniqueStudentsResponded > 0)
                 {
-                    var allStudentResponses = await _context.StudentResponses
-                        .Where(sr => sr.ExamID == examId)
-                        .ToListAsync();
+                    var allStudentResponses = await _studentResponseRepository.GetAllResponsesOfAnExamByIdAsync(examId);
 
                     var studentGradingCounts = allStudentResponses
                         .GroupBy(sr => sr.StudentID)
@@ -754,16 +408,7 @@ namespace QuizPortalAPI.Services
                     foreach (var studentId in studentGradingCounts.Keys)
                     {
                         var totalQuestionsForStudent = studentGradingCounts[studentId];
-                        var gradedQuestionsForStudent = await _context.GradingRecords
-                            .Where(gr => gr.StudentID == studentId && gr.QuestionID != 0)
-                            .Join(
-                                _context.StudentResponses.Where(sr => sr.ExamID == examId),
-                                gr => gr.ResponseID,
-                                sr => sr.ResponseID,
-                                (gr, sr) => gr
-                            )
-                            .Where(gr => gr.Status == "Graded")
-                            .CountAsync();
+                        var gradedQuestionsForStudent = await _gradingRepository.GetGradedQuestionsForStudentAsync(studentId, examId);
 
                         if (gradedQuestionsForStudent == totalQuestionsForStudent)
                         {
@@ -777,11 +422,7 @@ namespace QuizPortalAPI.Services
                     ExamID = examId,
                     ExamName = exam.Title,
                     TotalQuestions = questions.Count,
-                    TotalStudents = await _context.Results
-                        .Where(r => r.ExamID == examId)
-                        .Select(r => r.StudentID)
-                        .Distinct()
-                        .CountAsync(),
+                    TotalStudents = await _resultRepository.GetDistinctStudentResultCountAsync(examId),
                     TotalResponses = uniqueStudentsResponded,
                     GradedResponses = studentsFullyGraded,
                     PendingResponses = uniqueStudentsResponded - studentsFullyGraded,
@@ -951,10 +592,7 @@ namespace QuizPortalAPI.Services
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                var response = await _context.StudentResponses
-                    .Include(sr => sr.Question)
-                    .Include(sr => sr.Exam)
-                    .FirstOrDefaultAsync(sr => sr.ResponseID == responseId);
+                var response = await _studentResponseRepository.GetstudentResponseByResponseIdAsync(responseId);
 
                 if (response == null)
                     throw new InvalidOperationException("Response not found");
@@ -970,23 +608,22 @@ namespace QuizPortalAPI.Services
                 if (isPublished)
                     throw new InvalidOperationException("Cannot regrade a published exam. Please unpublish the exam first to make changes.");
 
-                var oldGrading = await _context.GradingRecords
-                    .FirstOrDefaultAsync(gr => gr.ResponseID == responseId && gr.Status == "Graded");
+                var oldGrading = await _gradingRepository.GetGradingRecordUsingResponseIdAsync(responseId);
 
                 if (oldGrading == null)
                     throw new InvalidOperationException("No grading record found to regrade");
 
                 oldGrading.Status = "Regraded";
-                _context.GradingRecords.Update(oldGrading);
-                await _context.SaveChangesAsync();
+                await _gradingRepository.UpdateAsync(oldGrading);
+                await _gradingRepository.SaveChangesAsync();
 
                 if (regradingDto.NewMarksObtained > response.Question?.Marks)
                     throw new ArgumentException($"Marks cannot exceed {response.Question?.Marks}");
 
                 response.MarksObtained = regradingDto.NewMarksObtained;
                 response.IsCorrect = regradingDto.NewMarksObtained > 0;
-                _context.StudentResponses.Update(response);
-                await _context.SaveChangesAsync();
+                await _studentResponseRepository.UpdateAsync(response);
+                await _studentResponseRepository.SaveChangesAsync();
 
                 var newGrading = new GradingRecord
                 {
@@ -1004,8 +641,8 @@ namespace QuizPortalAPI.Services
                     RegradeAt = DateTime.UtcNow
                 };
 
-                _context.GradingRecords.Add(newGrading);
-                await _context.SaveChangesAsync();
+                await _gradingRepository.AddAsync(newGrading);
+                await _gradingRepository.SaveChangesAsync();
 
                 await RecalculateStudentResultAsync(response.ExamID, response.StudentID);
 
@@ -1046,8 +683,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var result = await _context.Results
-                    .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
+                var result = await _resultRepository.GetStudentResultByExamAndStudentIdAsync(examId, studentId);
 
                 if (result == null)
                 {
@@ -1058,34 +694,22 @@ namespace QuizPortalAPI.Services
                         Status = "Completed",
                         CreatedAt = DateTime.UtcNow
                     };
-                    _context.Results.Add(result);
+                    await _resultRepository.AddAsync(result);
                 }
 
-                // Get all student responses for this exam
-                var studentResponses = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
-                    .Select(sr => sr.ResponseID)
-                    .ToListAsync();
+                var studentResponses = await _studentResponseRepository.GetStudentResponsesOfAnExamByStudentIdAsync(examId, studentId);
 
                 // Check how many responses are graded
-                var gradedResponseIds = await _context.GradingRecords
-                    .Where(gr => studentResponses.Contains(gr.ResponseID) && gr.Status == "Graded")
-                    .Select(gr => gr.ResponseID)
-                    .Distinct()
-                    .ToListAsync();
+                var gradedResponseIds = await _gradingRepository.CheckHowManyResponsesAreGradedAsync(studentResponses);
 
                 // Check if all responses are graded
                 var allResponsesGraded = studentResponses.Count > 0 && studentResponses.Count == gradedResponseIds.Count;
 
                 // Calculate total marks
-                var totalMarks = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
-                    .SumAsync(sr => sr.MarksObtained);
+                var totalMarks = await _studentResponseRepository.GetStudentTotalMarksFromTheirResponseAsync(examId, studentId);
 
                 // Get exam total marks
-                var examTotalMarks = await _context.Questions
-                    .Where(q => q.ExamID == examId)
-                    .SumAsync(q => q.Marks);
+                var examTotalMarks = await _questionRepository.CalculateExamTotalMarksByExamIdAsync(examId);
 
                 result.TotalMarks = totalMarks;
                 result.Percentage = examTotalMarks > 0 ? (totalMarks / examTotalMarks) * 100 : 0;
@@ -1095,13 +719,11 @@ namespace QuizPortalAPI.Services
                 result.Status = allResponsesGraded ? "Graded" : "Completed";
 
                 // Calculate rank
-                var rank = await _context.Results
-                    .Where(r => r.ExamID == examId && r.TotalMarks > totalMarks)
-                    .CountAsync();
+                var rank = await _resultRepository.CalculateRankAsync(examId, totalMarks);
                 result.Rank = rank + 1;
 
-                _context.Results.Update(result);
-                await _context.SaveChangesAsync();
+                await _resultRepository.UpdateAsync(result);
+                await _resultRepository.SaveChangesAsync();
 
                 return true;
             }
@@ -1119,8 +741,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var publication = await _context.ExamPublications
-                    .FirstOrDefaultAsync(ep => ep.ExamID == examId && ep.Status == "Published");
+                var publication = await _examPublicationRepository.GetExamPublicationStatusByExamIdAsync(examId);
 
                 return publication != null;
             }

@@ -1,7 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using QuizPortalAPI.DAL.ExamRepo;
+using QuizPortalAPI.DAL.ResultRepo;
 using QuizPortalAPI.Data;
 using QuizPortalAPI.DTOs.Result;
 using QuizPortalAPI.Models;
+using QuizPortalAPI.DAL.StudentResponseRepo;
+using QuizPortalAPI.DAL.QuestionRepo;
+using QuizPortalAPI.DAL.ExamPublicationRepo;
+using QuizPortalAPI.DAL.GradingRecordRepo;
 
 namespace QuizPortalAPI.Services
 {
@@ -9,11 +15,24 @@ namespace QuizPortalAPI.Services
     {
         private readonly AppDbContext _context;
         private readonly ILogger<ResultService> _logger;
+        private readonly IResultRepository _resultRepository;
+        private readonly IExamRepository _examRepository;
+        private readonly IStudentResponseRepository _studentResponseRepository;
+        private readonly IQuestionRepository _questionRepository;
+        private readonly IExamPublicationRepository _examPublicationRepository;
+        private readonly IGradingRecordRepository _gradingRecordRepository;
 
-        public ResultService(AppDbContext context, ILogger<ResultService> logger)
+
+        public ResultService(AppDbContext context, ILogger<ResultService> logger, IResultRepository resultRepository, IExamRepository examRepository, IStudentResponseRepository studentResponseRepository, IQuestionRepository questionRepository, IExamPublicationRepository examPublicationRepository, IGradingRecordRepository gradingRecordRepository)
         {
             _context = context;
             _logger = logger;
+            _resultRepository = resultRepository;
+            _examRepository = examRepository;
+            _studentResponseRepository = studentResponseRepository;
+            _questionRepository = questionRepository;
+            _examPublicationRepository = examPublicationRepository;
+            _gradingRecordRepository = gradingRecordRepository;
         }
 
         // /// <summary>
@@ -51,12 +70,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var result = await _context.Results
-                    .Include(r => r.Exam)
-                        .ThenInclude(e => e!.Questions)
-                    .Include(r => r.Student)
-                    .Include(r => r.EvaluatorUser)
-                    .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
+                var result = await _resultRepository.GetDetailedResultByStudentAndExamIdAsync(studentId, examId);
 
                 if (result == null)
                 {
@@ -64,7 +78,7 @@ namespace QuizPortalAPI.Services
                     return null;
                 }
 
-                return MapToResultDTO(result);
+                return await MapToResultDTOAsync(result);
             }
             catch (Exception ex)
             {
@@ -82,19 +96,18 @@ namespace QuizPortalAPI.Services
             {
                 var skip = (page - 1) * pageSize;
 
-                var results = await _context.Results
-                    .Where(r => r.StudentID == studentId)
-                    .Include(r => r.Exam)
-                        .ThenInclude(e => e!.Questions)
-                    .Include(r => r.Student)
-                    .Include(r => r.EvaluatorUser)
-                    .OrderByDescending(r => r.CreatedAt)
-                    .Skip(skip)
-                    .Take(pageSize)
-                    .ToListAsync();
+                var results = await _resultRepository.GetStudentsAllResultByIdAsync(studentId);
 
-                _logger.LogInformation($"Retrieved {results.Count} results for student {studentId} (page {page})");
-                return results.Select(r => MapToResultDTO(r)).ToList();
+                var pagedResult = results.Skip(skip).Take(pageSize).ToList();
+
+                _logger.LogInformation($"Retrieved {pagedResult.Count} results for student {studentId} (page {page})");
+                
+                var resultDTOs = new List<ResultDTO>();
+                foreach (var r in pagedResult)
+                {
+                    resultDTOs.Add(await MapToResultDTOAsync(r));
+                }
+                return resultDTOs;
             }
             catch (Exception ex)
             {
@@ -361,9 +374,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                return await _context.Questions
-                    .Where(q => q.ExamID == examId)
-                    .SumAsync(q => q.Marks);
+                return await _examRepository.GetExamTotalMarksByExamIdAsync(examId);
             }
             catch (Exception ex)
             {
@@ -379,7 +390,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.FindExamByIdAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
@@ -389,20 +400,19 @@ namespace QuizPortalAPI.Services
                     throw new UnauthorizedAccessException("You can only view results for your own exams");
                 }
 
-                var skip = (page - 1) * pageSize;
+                var results = await _resultRepository.GetAllResultsForAnExamByTeacherIdAsync(examId);
 
-                var results = await _context.Results
-                    .Where(r => r.ExamID == examId)
-                    .Include(r => r.Exam)
-                    .Include(r => r.Student)
-                    .Include(r => r.EvaluatorUser)
-                    .OrderByDescending(r => r.TotalMarks)
-                    .Skip(skip)
-                    .Take(pageSize)
-                    .ToListAsync();
+                var skip = (page - 1) * pageSize;
+                var pagedResult = results.Skip(skip).Take(pageSize).ToList();
 
                 _logger.LogInformation($"Teacher {teacherId} retrieved results for exam {examId} (page {page})");
-                return results.Select(r => MapToResultDTO(r)).ToList();
+                
+                var resultDTOs = new List<ResultDTO>();
+                foreach (var r in pagedResult)
+                {
+                    resultDTOs.Add(await MapToResultDTOAsync(r));
+                }
+                return resultDTOs;
             }
             catch (InvalidOperationException ex)
             {
@@ -477,22 +487,16 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var result = await _context.Results
-                    .Include(r => r.Exam)
-                    .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
+                var result = await _resultRepository.GetStudentResultByStudentAndExamIdAsync(studentId, examId);
 
                 if (result == null)
                     throw new InvalidOperationException("Result not found");
 
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.FindExamByIdAsync(examId);
                 var totalMarks = await GetExamTotalMarksAsync(examId);
                 var passingPercentage = exam?.PassingPercentage ?? 40;
 
-                var responses = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
-                    .Include(sr => sr.Question)
-                    .Include(sr => sr.Question!.Options)
-                    .ToListAsync();
+                var responses = await _studentResponseRepository.GetStudentResponseForAnExamByIdAsync(examId, studentId);
 
                 var questionResults = responses.Select(sr => new
                 {
@@ -763,22 +767,11 @@ namespace QuizPortalAPI.Services
             try
             {
                 // Get the student's total marks from their responses
-                var studentMarks = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
-                    .SumAsync(sr => sr.MarksObtained);
+                var studentMarks = await _studentResponseRepository.GetStudentTotalMarksFromTheirResponseAsync(examId, studentId);
 
                 // Calculate rank based on how many students have higher marks
                 // Group by student and calculate their total marks from responses
-                var higherScoringStudents = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId)
-                    .GroupBy(sr => sr.StudentID)
-                    .Select(g => new
-                    {
-                        StudentID = g.Key,
-                        TotalMarks = g.Sum(sr => sr.MarksObtained)
-                    })
-                    .Where(s => s.TotalMarks > studentMarks)
-                    .CountAsync();
+                var higherScoringStudents = await _studentResponseRepository.CountHigherScoringStudentsAsync(examId, studentId);
 
                 return higherScoringStudents + 1;
             }
@@ -797,9 +790,7 @@ namespace QuizPortalAPI.Services
             try
             {
                 // Get all students who have results for this exam
-                var results = await _context.Results
-                    .Where(r => r.ExamID == examId)
-                    .ToListAsync();
+                var results = await _resultRepository.GetAllResultsByExamIdAsync(examId);
 
                 if (results.Count == 0)
                 {
@@ -811,10 +802,10 @@ namespace QuizPortalAPI.Services
                 foreach (var result in results)
                 {
                     result.Rank = await GetStudentRankAsync(examId, result.StudentID);
-                    _context.Results.Update(result);
+                    await _resultRepository.UpdateAsync(result);
                 }
 
-                await _context.SaveChangesAsync();
+                await _resultRepository.SaveChangesAsync();
                 _logger.LogInformation($"Recalculated ranks for {results.Count} students in exam {examId}");
             }
             catch (Exception ex)
@@ -1030,42 +1021,22 @@ namespace QuizPortalAPI.Services
         //     }
         // }
 
-        private ResultDTO MapToResultDTO(Result result)
+        private async Task<ResultDTO> MapToResultDTOAsync(Result result)
         {
-            // Calculate exam total marks from questions (synchronous for performance)
-            var examTotalMarks = _context.Questions
-                .Where(q => q.ExamID == result.ExamID)
-                .Sum(q => (decimal?)q.Marks) ?? 0;
+            // Calculate exam total marks from questions
+            var examTotalMarks = await _questionRepository.CalculateExamTotalMarksByExamIdAsync(result.ExamID);
 
-            // Get latest submission date from StudentResponses
-            var latestSubmission = _context.StudentResponses
-                .Where(sr => sr.ExamID == result.ExamID && sr.StudentID == result.StudentID)
-                .OrderByDescending(sr => sr.SubmittedAt)
-                .FirstOrDefault();
-
-            // Get passing percentage from ExamPublication if available
-            var publication = _context.ExamPublications
-                .FirstOrDefault(ep => ep.ExamID == result.ExamID);
+            // Get latest submission date from StudentResponses (synchronous call despite the name)
+            var latestSubmission = _studentResponseRepository.GetLatestSubmissionOfAStudentInAnExamAsync(result.ExamID, result.StudentID);
 
             // Calculate rank if not set
             int rank = result.Rank ?? 0;
             if (rank == 0 || !result.Rank.HasValue)
             {
-                // Get the student's total marks from their responses
-                var studentMarks = _context.StudentResponses
-                    .Where(sr => sr.ExamID == result.ExamID && sr.StudentID == result.StudentID)
-                    .Sum(sr => (decimal?)sr.MarksObtained) ?? 0;
+                var studentMarks = await _studentResponseRepository.GetStudentTotalMarksFromTheirResponseAsync(result.ExamID, result.StudentID);
 
                 // Calculate rank based on how many students have higher marks
-                var higherScoringStudents = _context.StudentResponses
-                    .Where(sr => sr.ExamID == result.ExamID)
-                    .GroupBy(sr => sr.StudentID)
-                    .Select(g => new
-                    {
-                        StudentID = g.Key,
-                        TotalMarks = g.Sum(sr => sr.MarksObtained)
-                    })
-                    .Count(s => s.TotalMarks > studentMarks);
+                var higherScoringStudents = await _studentResponseRepository.CountStudentsWithHigherMarksAsync(result.ExamID, studentMarks);
 
                 rank = higherScoringStudents + 1;
                 _logger.LogInformation($"Calculated rank {rank} for student {result.StudentID} in exam {result.ExamID} (marks: {studentMarks}, higher scoring: {higherScoringStudents})");
@@ -1102,19 +1073,12 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var totalResponses = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId)
-                    .CountAsync();
+                var totalResponses = await _studentResponseRepository.GetResponseCountOfAnExamByIdAsync(examId);
 
                 if (totalResponses == 0)
                     return false;
 
-                var gradedResponses = await _context.GradingRecords
-                    .Include(gr => gr.StudentResponse)
-                    .Where(gr => gr.StudentResponse != null && gr.StudentResponse.ExamID == examId)
-                    .Select(gr => gr.ResponseID)
-                    .Distinct()
-                    .CountAsync();
+                var gradedResponses = await _gradingRecordRepository.GetAllGradedResponseCountByExamIdAsync(examId);
 
                 var allGraded = totalResponses == gradedResponses;
                 _logger.LogInformation($"Exam {examId}: {gradedResponses}/{totalResponses} responses graded. AllGraded: {allGraded}");
@@ -1135,7 +1099,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.FindExamByIdAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
@@ -1143,15 +1107,9 @@ namespace QuizPortalAPI.Services
                     throw new UnauthorizedAccessException("You can only view progress for your own exams");
 
                 // Count unique students who have submitted responses
-                var totalStudents = await _context.StudentResponses
-                    .Where(r => r.ExamID == examId)
-                    .Select(r => r.StudentID)
-                    .Distinct()
-                    .CountAsync();
+                var totalStudents = await _studentResponseRepository.GetUniqueStudentResponseCountAsync(examId);
 
-                var gradedStudents = await _context.Results
-                    .Where(r => r.ExamID == examId && r.Status == "Graded")
-                    .CountAsync();
+                var gradedStudents = await _resultRepository.CountGradedResultsAsync(examId);
 
                 var pendingStudents = totalStudents - gradedStudents;
 
@@ -1185,8 +1143,7 @@ namespace QuizPortalAPI.Services
 
             try
             {
-                // ✅ Verify exam exists and teacher owns it
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.FindExamByIdAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
@@ -1196,38 +1153,28 @@ namespace QuizPortalAPI.Services
                     throw new UnauthorizedAccessException("You can only publish results for your own exams");
                 }
 
-                // ✅ Check if exam is already published
-                var existingPublication = await _context.ExamPublications
-                    .FirstOrDefaultAsync(ep => ep.ExamID == examId);
+                var existingPublication = await _examPublicationRepository.GetExamPublicationDetailsForAnExamByIdAsync(examId);
 
                 if (existingPublication != null && existingPublication.Status == "Published")
                 {
                     throw new InvalidOperationException("This exam has already been published");
                 }
 
-                // ✅ Validate passing percentage
                 if (passingPercentage < 0 || passingPercentage > 100)
                     throw new ArgumentException("Passing percentage must be between 0 and 100");
 
-                // ✅ Get all students who have submitted responses
-                var studentsWithResponses = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId)
-                    .Select(sr => sr.StudentID)
-                    .Distinct()
-                    .ToListAsync();
+                var studentsWithResponses = await _studentResponseRepository.GetAllUniqueStudentsResponseAsync(examId);
 
                 if (studentsWithResponses.Count == 0)
                     throw new InvalidOperationException("No student responses found for this exam");
 
-                // ✅ Ensure Result records exist for all students who submitted responses
                 foreach (var studentId in studentsWithResponses)
                 {
-                    var existingResult = await _context.Results
-                        .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
+                    var existingResult = await _resultRepository.GetExistingResultUsingStudentAndExamIdAsync(studentId, examId);
 
                     if (existingResult == null)
                     {
-                        // Create a Result record if it doesn't exist
+                        
                         var newResult = new Result
                         {
                             ExamID = examId,
@@ -1239,43 +1186,29 @@ namespace QuizPortalAPI.Services
                         };
 
                         // Calculate marks from graded responses
-                        var studentMarks = await _context.StudentResponses
-                            .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
-                            .SumAsync(sr => sr.MarksObtained);
+                        var studentMarks = await _studentResponseRepository.GetStudentTotalMarksFromTheirResponseAsync(examId, studentId);
 
-                        var examTotalMarks = await _context.Questions
-                            .Where(q => q.ExamID == examId)
-                            .SumAsync(q => q.Marks);
+                        var examTotalMarks = await _examRepository.GetExamTotalMarksByExamIdAsync(examId);
 
                         newResult.TotalMarks = studentMarks;
                         newResult.Percentage = examTotalMarks > 0 ? (studentMarks / examTotalMarks) * 100 : 0;
 
-                        _context.Results.Add(newResult);
+                        await _resultRepository.AddAsync(newResult);
                         _logger.LogInformation($"Created Result record for student {studentId} in exam {examId}");
                     }
                 }
 
-                await _context.SaveChangesAsync();
+                await _resultRepository.SaveChangesAsync();
 
-                // ✅ Get all results for the exam (now including newly created ones)
-                var results = await _context.Results
-                    .Where(r => r.ExamID == examId)
-                    .ToListAsync();
-
-                // ✅ Check if all responses are graded
+                // Get all results for the exam (now including newly created ones)
+                var results = await _resultRepository.GetAllResultsByExamIdAsync(examId);
+                // Check if all responses are graded
                 var allGraded = await AreAllResponsesGradedAsync(examId);
                 if (!allGraded)
                 {
-                    var totalResponses = await _context.StudentResponses
-                        .Where(sr => sr.ExamID == examId)
-                        .CountAsync();
+                    var totalResponses = await _studentResponseRepository.GetResponseCountOfAnExamByIdAsync(examId);
 
-                    var gradedResponses = await _context.GradingRecords
-                        .Include(gr => gr.StudentResponse)
-                        .Where(gr => gr.StudentResponse != null && gr.StudentResponse.ExamID == examId)
-                        .Select(gr => gr.ResponseID)
-                        .Distinct()
-                        .CountAsync();
+                    var gradedResponses = await _gradingRecordRepository.GetAllGradedResponseCountByExamIdAsync(examId);
 
                     var pendingCount = totalResponses - gradedResponses;
 
@@ -1283,36 +1216,34 @@ namespace QuizPortalAPI.Services
                         $"Cannot publish exam. {pendingCount} out of {totalResponses} responses are still pending grading");
                 }
 
-                // ✅ Get grading progress
+                // Get grading progress
                 var totalStudents = results.Count;
 
-                // ✅ Recalculate ranks for all students before publishing
+                // Recalculate ranks for all students before publishing
                 _logger.LogInformation($"Recalculating ranks for {totalStudents} students in exam {examId}");
                 foreach (var result in results)
                 {
                     // Update total marks first
-                    result.TotalMarks = await _context.StudentResponses
-                        .Where(sr => sr.ExamID == examId && sr.StudentID == result.StudentID)
-                        .SumAsync(sr => sr.MarksObtained);
+                    result.TotalMarks = await _studentResponseRepository.GetStudentTotalMarksFromTheirResponseAsync(examId, result.StudentID);
                     
                     // Recalculate rank
                     result.Rank = await GetStudentRankAsync(examId, result.StudentID);
                 }
 
-                // ✅ Mark all results as published and graded (since all responses are confirmed to be graded)
+                // Mark all results as published and graded (since all responses are confirmed to be graded)
                 var publishedCount = 0;
                 foreach (var result in results)
                 {
                     result.Status = "Graded"; // Mark as graded when publishing
                     result.IsPublished = true;
                     result.PublishedAt = DateTime.UtcNow;
-                    _context.Results.Update(result);
+                    await _resultRepository.UpdateAsync(result);
                     publishedCount++;
                 }
                 
                 var gradedStudents = totalStudents; // All students are now graded
 
-                // ✅ Create or update ExamPublication record
+                // Create or update ExamPublication record
                 if (existingPublication == null)
                 {
                     existingPublication = new ExamPublication
@@ -1327,7 +1258,7 @@ namespace QuizPortalAPI.Services
                         PublicationNotes = notes,
                         CreatedAt = DateTime.UtcNow
                     };
-                    _context.ExamPublications.Add(existingPublication);
+                    await _examPublicationRepository.AddAsync(existingPublication);
                 }
                 else
                 {
@@ -1339,10 +1270,10 @@ namespace QuizPortalAPI.Services
                     existingPublication.PublishedAt = DateTime.UtcNow;
                     existingPublication.PublicationNotes = notes;
                     existingPublication.UpdatedAt = DateTime.UtcNow;
-                    _context.ExamPublications.Update(existingPublication);
+                    await _examPublicationRepository.UpdateAsync(existingPublication);
                 }
 
-                await _context.SaveChangesAsync();
+                await _examPublicationRepository.SaveChangesAsync();
                 await transaction.CommitAsync();
 
                 _logger.LogInformation($"Published exam {examId} with {publishedCount} results by teacher {teacherId}");
@@ -1388,16 +1319,14 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.FindExamByIdAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
                 if (exam.CreatedBy != teacherId)
                     throw new UnauthorizedAccessException("You can only view publication status for your own exams");
 
-                var publication = await _context.ExamPublications
-                    .Include(ep => ep.PublishedByUser)
-                    .FirstOrDefaultAsync(ep => ep.ExamID == examId);
+                var publication = await _examPublicationRepository.GetExamPublicationDetailsWithPublishedUserByExamId(examId);
 
                 if (publication == null)
                 {
@@ -1443,8 +1372,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var publication = await _context.ExamPublications
-                    .FirstOrDefaultAsync(ep => ep.ExamID == examId && ep.Status == "Published");
+                var publication = await _examPublicationRepository.GetExamPublicationStatusByExamIdAsync(examId);
 
                 return publication != null;
             }
@@ -1462,17 +1390,16 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var results = await _context.Results
-                    .Where(r => r.StudentID == studentId && r.IsPublished)
-                    .Include(r => r.Exam)
-                    .Include(r => r.Student)
-                    // .Include(r => r.TotalMarks)
-                    .Include(r => r.EvaluatorUser)
-                    .OrderByDescending(r => r.PublishedAt)
-                    .ToListAsync();
+                var results = await _resultRepository.GetPublishedExamResultsByStudentIdAsync(studentId);
 
                 _logger.LogInformation($"Retrieved {results.Count} published results for student {studentId}");
-                return results.Select(r => MapToResultDTO(r)).ToList();
+                
+                var resultDTOs = new List<ResultDTO>();
+                foreach (var r in results)
+                {
+                    resultDTOs.Add(await MapToResultDTOAsync(r));
+                }
+                return resultDTOs;
             }
             catch (Exception ex)
             {
@@ -1490,7 +1417,7 @@ namespace QuizPortalAPI.Services
 
             try
             {
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.FindExamByIdAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
@@ -1500,32 +1427,29 @@ namespace QuizPortalAPI.Services
                     throw new UnauthorizedAccessException("You can only unpublish exams you own");
                 }
 
-                var publication = await _context.ExamPublications
-                    .FirstOrDefaultAsync(ep => ep.ExamID == examId);
+                var publication = await _examPublicationRepository.GetExamPublicationDetailsForAnExamByIdAsync(examId);
 
                 if (publication == null || publication.Status != "Published")
                     throw new InvalidOperationException("This exam is not published");
 
-                // ✅ Mark all results as unpublished
-                var results = await _context.Results
-                    .Where(r => r.ExamID == examId)
-                    .ToListAsync();
+                // Mark all results as unpublished
+                var results = await _resultRepository.GetAllResultsByExamIdAsync(examId);
 
                 foreach (var result in results)
                 {
                     result.IsPublished = false;
-                    _context.Results.Update(result);
+                    await _resultRepository.UpdateAsync(result);
                 }
 
-                // ✅ Update publication record
+                // Update publication record
                 publication.Status = "NotPublished";
                 publication.PublishedAt = null;
                 publication.PublishedBy = null;
                 publication.PublicationNotes = reason;
                 publication.UpdatedAt = DateTime.UtcNow;
-                _context.ExamPublications.Update(publication);
+                await _examPublicationRepository.UpdateAsync(publication);
 
-                await _context.SaveChangesAsync();
+                await _examPublicationRepository.SaveChangesAsync();
                 await transaction.CommitAsync();
 
                 _logger.LogInformation($"Unpublished exam {examId} by teacher {teacherId}");

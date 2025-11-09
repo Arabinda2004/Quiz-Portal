@@ -7,37 +7,38 @@ using QuizPortalAPI.Data;
 using QuizPortalAPI.DTOs.Auth;
 using QuizPortalAPI.Models;
 using QuizPortalAPI.Helpers;
+using QuizPortalAPI.DAL.UserRepo;
 
 
 namespace QuizPortalAPI.Services
 {
     public class AuthService : IAuthService
     {
-        private readonly AppDbContext _context;
         private readonly ILogger<AuthService> _logger;
         private readonly IConfiguration _configuration;
         private readonly IUserService _userService;
         private readonly AuthHelper _jwtHelper;
+        private readonly IUserRepository _userRepository;
 
         public AuthService(
-            AppDbContext context,
             ILogger<AuthService> logger,
             IConfiguration configuration,
             IUserService userService,
-            AuthHelper jwtHelper)
+            AuthHelper jwtHelper,
+            IUserRepository userRepository)
         {
-            _context = context;
             _logger = logger;
             _configuration = configuration;
             _userService = userService;
             _jwtHelper = jwtHelper;
+            _userRepository = userRepository;
         }
 
         public async Task<AuthResponseDTO> LoginAsync(LoginDTO loginDTO)
         {
             try
             {
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginDTO.Email);
+                var user = await _userRepository.FindUserByEmailAsync(loginDTO.Email);
                 if (user == null)
                 {
                     _logger.LogWarning($"Login attempt with non-existent email: {loginDTO.Email}");
@@ -97,7 +98,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                if (await _userService.UserExistsByEmailAsync(registerDTO.Email))
+                if (await _userRepository.IsUserExistsWithEmailAsync(registerDTO.Email))
                 {
                     _logger.LogWarning($"Registration attempt with existing email: {registerDTO.Email}");
                     return new AuthResponseDTO
@@ -128,8 +129,7 @@ namespace QuizPortalAPI.Services
                     CreatedAt = DateTime.UtcNow
                 };
 
-                _context.Users.Add(user);  
-                await _context.SaveChangesAsync();
+                await _userRepository.CreateAsync(user);
 
                 _logger.LogInformation($"New user registered as {userRole}: {user.Email}");
 
@@ -170,7 +170,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var user = await _context.Users.FindAsync(userId);
+                var user = await _userRepository.GetUserDetailsByIdAsync(userId);
                 if (user == null)
                 {
                     _logger.LogWarning($"Change password attempt for non-existent user: {userId}");
@@ -194,8 +194,7 @@ namespace QuizPortalAPI.Services
                 user.Password = BCrypt.Net.BCrypt.HashPassword(changePasswordDTO.NewPassword);
                 user.IsDefaultPassword = false;
 
-                _context.Users.Update(user);
-                await _context.SaveChangesAsync();
+                await _userRepository.UpdateAsync(user);
 
                 _logger.LogInformation($"Password changed for user: {user.Email}");
 
@@ -216,19 +215,6 @@ namespace QuizPortalAPI.Services
             }
         }
 
-        public Task<bool> LogoutAsync(int userId)
-        {
-            try
-            {
-                _logger.LogInformation($"User logged out: {userId}");
-                return Task.FromResult(true);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error during logout: {ex.Message}");
-                return Task.FromResult(false);
-            }
-        }
 
         public Task<bool> ValidateTokenAsync(string token)
         {

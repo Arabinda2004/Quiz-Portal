@@ -25,7 +25,6 @@ namespace QuizPortalAPI.Services
         // Utility methods
         Task<bool> IsTeacherExamOwnerAsync(int examId, int teacherId);
         
-        Task<bool> ExamExistsByAccessCodeAsync(string accessCode);
         
         string GenerateAccessCode();
     }

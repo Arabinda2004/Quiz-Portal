@@ -2,17 +2,44 @@ using Microsoft.EntityFrameworkCore;
 using QuizPortalAPI.Data;
 using QuizPortalAPI.DTOs.StudentResponse;
 using QuizPortalAPI.Models;
+using QuizPortalAPI.DAL.StudentResponseRepo;
+using QuizPortalAPI.DAL.ExamRepo;
+using QuizPortalAPI.DAL.QuestionRepo;
+using QuizPortalAPI.DAL.UserRepo;
+using QuizPortalAPI.DAL.ExamPublicationRepo;
+using QuizPortalAPI.DAL.GradingRecordRepo;
+using QuizPortalAPI.DAL.ResultRepo;
 
 namespace QuizPortalAPI.Services
 {
     public class StudentResponseService : IStudentResponseService
     {
-        private readonly AppDbContext _context;
+        private readonly IStudentResponseRepository _studentResponseRepo;
+        private readonly IExamRepository _examRepo;
+        private readonly IQuestionRepository _questionRepo;
+        private readonly IUserRepository _userRepo;
+        private readonly IExamPublicationRepository _examPublicationRepo;
+        private readonly IGradingRecordRepository _gradingRecordRepo;
+        private readonly IResultRepository _resultRepo;
         private readonly ILogger<StudentResponseService> _logger;
 
-        public StudentResponseService(AppDbContext context, ILogger<StudentResponseService> logger)
+        public StudentResponseService(
+            IStudentResponseRepository studentResponseRepo,
+            IExamRepository examRepo,
+            IQuestionRepository questionRepo,
+            IUserRepository userRepo,
+            IExamPublicationRepository examPublicationRepo,
+            IGradingRecordRepository gradingRecordRepo,
+            IResultRepository resultRepo,
+            ILogger<StudentResponseService> logger)
         {
-            _context = context;
+            _studentResponseRepo = studentResponseRepo;
+            _examRepo = examRepo;
+            _questionRepo = questionRepo;
+            _userRepo = userRepo;
+            _examPublicationRepo = examPublicationRepo;
+            _gradingRecordRepo = gradingRecordRepo;
+            _resultRepo = resultRepo;
             _logger = logger;
         }
 
@@ -23,7 +50,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepo.FindExamByIdAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
@@ -31,29 +58,25 @@ namespace QuizPortalAPI.Services
                 if (now < exam.ScheduleStart || now > exam.ScheduleEnd)
                     throw new InvalidOperationException("Exam is not active");
 
-                var publication = await _context.ExamPublications
-                    .FirstOrDefaultAsync(ep => ep.ExamID == examId && ep.Status == "Published");
+                var publication = await _examPublicationRepo.GetPublishedExamPublicationAsync(examId);
 
                 if (publication != null)
                     throw new InvalidOperationException("This exam has been published and no further submissions are allowed");
 
-                var question = await _context.Questions.FindAsync(createResponseDTO.QuestionID);
+                var question = await _questionRepo.FindQuestionByIdAsync(createResponseDTO.QuestionID);
                 if (question == null)
                     throw new InvalidOperationException("Question not found");
 
                 if (question.ExamID != examId)
                     throw new InvalidOperationException("Question does not belong to this exam");
 
-                var student = await _context.Users.FindAsync(studentId);
+                var student = await _userRepo.FindUserByIdAsync(studentId);
                 if (student == null)
                     throw new InvalidOperationException("Student not found");
 
 
-                var existingResponse = await _context.StudentResponses
-                    .FirstOrDefaultAsync(sr => sr.ExamID == examId &&
-                                               sr.QuestionID == createResponseDTO.QuestionID &&
-                                               sr.StudentID == studentId
-                                        );
+                var existingResponse = await _studentResponseRepo.FindExistingResponseAsync(
+                    examId, createResponseDTO.QuestionID, studentId);
 
                 StudentResponse response;
 
@@ -63,7 +86,7 @@ namespace QuizPortalAPI.Services
                     response.AnswerText = createResponseDTO.AnswerText;
                     response.SubmittedAt = DateTime.UtcNow;
 
-                    _context.StudentResponses.Update(response);
+                    await _studentResponseRepo.UpdateAsync(response);
                 }
                 else
                 {
@@ -79,10 +102,10 @@ namespace QuizPortalAPI.Services
                     response.IsCorrect = null;
                     response.MarksObtained = 0;
 
-                    _context.StudentResponses.Add(response);
+                    await _studentResponseRepo.AddAsync(response);
                 }
 
-                await _context.SaveChangesAsync();
+                await _studentResponseRepo.SaveChangesAsync();
 
                 _logger.LogInformation($"Response submitted by student {studentId} for question {createResponseDTO.QuestionID} in exam {examId}");
                 return MapToStudentResponseDTO(response, question);
@@ -111,9 +134,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var response = await _context.StudentResponses
-                    .Include(sr => sr.Question)
-                    .FirstOrDefaultAsync(sr => sr.ResponseID == responseId);
+                var response = await _studentResponseRepo.GetResponseByIdWithQuestionAsync(responseId);
 
                 if (response == null)
                 {
@@ -137,24 +158,18 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepo.FindExamByIdAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
-                var questions = await _context.Questions
-                    .Where(q => q.ExamID == examId)
-                    .ToListAsync();
+                var questions = await _questionRepo.GetExamQuestionsByExamIdAsync(examId);
 
-                var responses = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId && sr.StudentID == studentId)
-                    .Include(sr => sr.Question)
-                    .ToListAsync();
+                var responses = await _studentResponseRepo.GetStudentResponsesWithQuestionsAsync(examId, studentId);
 
                 var responseDTOs = new List<StudentResponseDTO>();
                 foreach (var response in responses)
                 {
-                    var gradingRecord = await _context.GradingRecords
-                        .FirstOrDefaultAsync(gr => gr.ResponseID == response.ResponseID && gr.Status == "Graded");
+                    var gradingRecord = await _gradingRecordRepo.GetGradedRecordByResponseIdAsync(response.ResponseID);
 
                     var dto = MapToStudentResponseDTO(response, response.Question!);
                     
@@ -201,14 +216,11 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var question = await _context.Questions.FindAsync(questionId);
+                var question = await _questionRepo.FindQuestionByIdAsync(questionId);
                 if (question == null)
                     throw new InvalidOperationException("Question not found");
 
-                var responses = await _context.StudentResponses
-                    .Where(sr => sr.QuestionID == questionId)
-                    .Include(sr => sr.Question)
-                    .ToListAsync();
+                var responses = await _studentResponseRepo.GetResponsesByQuestionWithQuestionAsync(questionId);
 
                 _logger.LogInformation($"Retrieved {responses.Count} responses for question {questionId}");
                 return responses.Select(r => MapToStudentResponseDTO(r, r.Question!)).ToList();
@@ -232,7 +244,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepo.FindExamByIdAsync(examId);
                 if (exam == null)
                     return false;
 
@@ -240,8 +252,7 @@ namespace QuizPortalAPI.Services
                 bool isExamActive = now >= exam.ScheduleStart && now <= exam.ScheduleEnd;
                 
                 // Check if exam is published - if published, students cannot submit new answers
-                var isExamPublished = await _context.ExamPublications
-                    .AnyAsync(ep => ep.ExamID == examId && ep.Status == "Published");
+                var isExamPublished = await _examPublicationRepo.IsExamPublishedAsync(examId);
 
                 return isExamActive && !isExamPublished;
             }
@@ -259,8 +270,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                return await _context.StudentResponses
-                    .CountAsync(sr => sr.ExamID == examId && sr.StudentID == studentId);
+                return await _studentResponseRepo.CountResponsesByStudentAsync(examId, studentId);
             }
             catch (Exception ex)
             {
@@ -276,10 +286,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                return await _context.StudentResponses
-                    .AnyAsync(sr => sr.ExamID == examId && 
-                                   sr.QuestionID == questionId && 
-                                   sr.StudentID == studentId);
+                return await _studentResponseRepo.ExistsAsync(examId, questionId, studentId);
             }
             catch (Exception ex)
             {
@@ -295,7 +302,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var response = await _context.StudentResponses.FindAsync(responseId);
+                var response = await _studentResponseRepo.GetstudentResponseByResponseIdAsync(responseId);
                 if (response == null)
                     throw new InvalidOperationException("Response not found");
 
@@ -304,7 +311,7 @@ namespace QuizPortalAPI.Services
                     throw new UnauthorizedAccessException("You can only withdraw your own responses");
 
                 // Check if exam is still active
-                var exam = await _context.Exams.FindAsync(response.ExamID);
+                var exam = await _examRepo.FindExamByIdAsync(response.ExamID);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
@@ -312,8 +319,8 @@ namespace QuizPortalAPI.Services
                 if (now > exam.ScheduleEnd)
                     throw new InvalidOperationException("Cannot withdraw response after exam ends");
 
-                _context.StudentResponses.Remove(response);
-                await _context.SaveChangesAsync();
+                await _studentResponseRepo.DeleteAsync(response);
+                await _studentResponseRepo.SaveChangesAsync();
 
                 _logger.LogInformation($"Response {responseId} withdrawn by student {studentId}");
                 return true;
@@ -342,37 +349,30 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepo.FindExamByIdAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
-                var totalQuestions = await _context.Questions
-                    .CountAsync(q => q.ExamID == examId);
+                var totalQuestions = await _questionRepo.GetExamQuestionCountByExamIdAsync(examId);
 
-                var studentAttempts = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId)
-                    .GroupBy(sr => sr.StudentID)
-                    .Select(g => new { StudentId = g.Key, ResponseCount = g.Count() }) // here g represents each group | studentId is the grouping key and ResponseCount is the count of responses in that group
+                var responsesGrouped = await _studentResponseRepo.GetResponsesGroupedByStudentAsync(examId);
+                
+                var studentAttempts = responsesGrouped
+                    .Select(g => new { StudentId = g.Key, ResponseCount = g.Value.Count })
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
-                    .ToListAsync();
+                    .ToList();
 
-                var totalCount = await _context.StudentResponses // count of total unique students
-                    .Where(sr => sr.ExamID == examId)
-                    .Select(sr => sr.StudentID)
-                    .Distinct()
-                    .CountAsync();
+                var totalCount = responsesGrouped.Count; // count of total unique students
 
                 var studentAttemptDTOs = new List<StudentAttemptDTO>();
 
                 foreach (var attempt in studentAttempts)
                 {
-                    var student = await _context.Users.FindAsync(attempt.StudentId);
+                    var student = await _userRepo.FindUserByIdAsync(attempt.StudentId);
                     if (student == null) continue;
 
-                    var responses = await _context.StudentResponses
-                        .Where(sr => sr.ExamID == examId && sr.StudentID == attempt.StudentId)
-                        .ToListAsync();
+                    var responses = responsesGrouped[attempt.StudentId];
 
                     var firstResponse = responses.FirstOrDefault();
                     var lastResponse = responses.OrderByDescending(r => r.SubmittedAt).FirstOrDefault();
@@ -422,21 +422,17 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepo.FindExamByIdAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
-                var questions = await _context.Questions
-                    .Where(q => q.ExamID == examId)
-                    .ToListAsync();
+                var questions = await _questionRepo.GetExamQuestionsByExamIdAsync(examId);
 
                 var totalMarks = questions.Sum(q => q.Marks);
                 var passingPercentage = exam.PassingPercentage;
                 var passingMarks = (int)(totalMarks * passingPercentage / 100);
 
-                var allResponses = await _context.StudentResponses
-                    .Where(sr => sr.ExamID == examId)
-                    .ToListAsync();
+                var allResponses = await _studentResponseRepo.GetAllResponsesForExamAsync(examId);
 
                 var uniqueStudents = allResponses
                     .Select(r => r.StudentID)
@@ -444,8 +440,7 @@ namespace QuizPortalAPI.Services
                     .ToList();
 
                 var studentsAttempted = uniqueStudents.Count;
-                var totalEnrolledStudents = await _context.Users
-                    .CountAsync(u => u.Role == UserRole.Student);
+                var totalEnrolledStudents = await _studentResponseRepo.CountTotalStudentsByRoleAsync();
 
                 var studentsNotAttempted = totalEnrolledStudents - studentsAttempted;
 
@@ -551,8 +546,7 @@ namespace QuizPortalAPI.Services
         {
             // This method is kept for backward compatibility but not actively used
             // Check if there's a grading record for this response
-            var gradingRecord = await _context.GradingRecords
-                .FirstOrDefaultAsync(gr => gr.ResponseID == response.ResponseID && gr.Status == "Graded");
+            var gradingRecord = await _gradingRecordRepo.GetGradedRecordByResponseIdAsync(response.ResponseID);
 
             return new StudentResponseDTO
             {
@@ -600,15 +594,14 @@ namespace QuizPortalAPI.Services
             {
                 _logger.LogInformation($"Finalizing exam submission for student {studentId}, exam {examId}");
 
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepo.FindExamByIdAsync(examId);
                 if (exam == null)
                 {
                     _logger.LogWarning($"Exam {examId} not found when finalizing submission");
                     throw new InvalidOperationException("Exam not found");
                 }
 
-                var existingResult = await _context.Results
-                    .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
+                var existingResult = await _resultRepo.FindResultByExamAndStudentAsync(examId, studentId);
 
                 if (existingResult != null)
                 {
@@ -619,7 +612,8 @@ namespace QuizPortalAPI.Services
                     {
                         existingResult.Status = "Completed";
                         existingResult.UpdatedAt = DateTime.UtcNow;
-                        await _context.SaveChangesAsync();
+                        await _resultRepo.UpdateAsync(existingResult);
+                        await _resultRepo.SaveChangesAsync();
                         _logger.LogInformation($"Updated existing result {existingResult.ResultID} to Completed status");
                         return existingResult;
                     }
@@ -644,8 +638,8 @@ namespace QuizPortalAPI.Services
                     CreatedAt = DateTime.UtcNow
                 };
 
-                _context.Results.Add(result);
-                await _context.SaveChangesAsync();
+                await _resultRepo.AddAsync(result);
+                await _resultRepo.SaveChangesAsync();
 
                 _logger.LogInformation($"Successfully created result {result.ResultID} for student {studentId} exam {examId}");
                 return result;

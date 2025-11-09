@@ -355,6 +355,8 @@ export const studentService = {
   getExamWithQuestions: async (examId) => {
     try {
       const response = await api.get(`/exams/${examId}/student-view`)
+      console.log("Student view response: ")
+      console.log(response.data)
       return response.data
     } catch (error) {
       throw error.response?.data || error.message

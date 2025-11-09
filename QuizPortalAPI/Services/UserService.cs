@@ -1,21 +1,18 @@
-using Microsoft.EntityFrameworkCore;
-using QuizPortalAPI.Data;
 using QuizPortalAPI.DTOs.User;
 using QuizPortalAPI.DTOs.Auth;
 using QuizPortalAPI.Models;
-
-using System.Security.Claims;
+using QuizPortalAPI.DAL.UserRepo;
 
 namespace QuizPortalAPI.Services
 {
     public class UserService : IUserService
     {
-        private readonly AppDbContext _context;
+        private readonly IUserRepository _userRepository;
         private readonly ILogger<UserService> _logger;
 
-        public UserService(AppDbContext context, ILogger<UserService> logger)
+        public UserService(IUserRepository userRepository, ILogger<UserService> logger)
         {
-            _context = context;
+            _userRepository = userRepository;
             _logger = logger;
         }
 
@@ -23,7 +20,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var users = await _context.Users.ToListAsync();
+                var users = await _userRepository.GetAllUsersAsync();
                 return users.Select(MapToResponseDTO).ToList(); // Select() is a LINQ projection method
             }
             catch (Exception ex)
@@ -37,7 +34,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var user = await _context.Users.FindAsync(userId);
+                var user = await _userRepository.GetUserDetailsByIdAsync(userId);
                 return user != null ? MapToResponseDTO(user) : null;
             }
             catch (Exception ex)
@@ -52,7 +49,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+                var user = await _userRepository.FindUserByEmailAsync(email);
                 return user != null ? MapToResponseDTO(user) : null;
             }
             catch (Exception ex)
@@ -85,8 +82,7 @@ namespace QuizPortalAPI.Services
                     CreatedAt = DateTime.UtcNow
                 };
 
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync();
+                await _userRepository.CreateAsync(user);
 
                 _logger.LogInformation($"User created successfully: {user.Email}");
                 return MapToResponseDTO(user);
@@ -102,7 +98,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var user = await _context.Users.FindAsync(userId);
+                var user = await _userRepository.GetUserDetailsByIdAsync(userId);
                 if (user == null)
                     return null;
 
@@ -126,8 +122,7 @@ namespace QuizPortalAPI.Services
                 // }
                 // my change 
 
-                _context.Users.Update(user);
-                await _context.SaveChangesAsync();
+                await _userRepository.UpdateAsync(user);
 
                 _logger.LogInformation($"User updated successfully: {user.Email}");
                 return MapToResponseDTO(user);
@@ -143,7 +138,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var user = await _context.Users.FindAsync(userId);
+                var user = await _userRepository.GetUserDetailsByIdAsync(userId);
                 if (user == null)
                     return null;
 
@@ -166,8 +161,7 @@ namespace QuizPortalAPI.Services
                     user.Role = role;
                 }
                 
-                _context.Users.Update(user);
-                await _context.SaveChangesAsync();
+                await _userRepository.UpdateAsync(user);
 
                 _logger.LogInformation($"User updated successfully: {user.Email}");
                 return MapToResponseDTO(user);
@@ -183,12 +177,9 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var user = await _context.Users.FindAsync(userId);
-                if (user == null)
+                var deleted = await _userRepository.DeleteAsync(userId);
+                if (!deleted)
                     return false;
-
-                _context.Users.Remove(user);
-                await _context.SaveChangesAsync();
 
                 _logger.LogInformation($"User deleted successfully: {userId}");
                 return true;
@@ -202,7 +193,7 @@ namespace QuizPortalAPI.Services
 
         public async Task<bool> UserExistsByEmailAsync(string email)
         {
-            return await _context.Users.AnyAsync(u => u.Email == email);
+            return await _userRepository.IsUserExistsWithEmailAsync(email);
         }
 
         public async Task<bool> CanUpdateRoleAsync(int adminUserId, int targetUserId)
@@ -214,7 +205,7 @@ namespace QuizPortalAPI.Services
                     return false;
 
                 // Get the admin user
-                var adminUser = await _context.Users.FindAsync(adminUserId);
+                var adminUser = await _userRepository.GetUserDetailsByIdAsync(adminUserId);
                 if (adminUser == null)
                 {
                     _logger.LogWarning($"Admin user {adminUserId} not found");
@@ -229,7 +220,7 @@ namespace QuizPortalAPI.Services
                 }
 
                 // Check if target user exists
-                var targetUser = await _context.Users.FindAsync(targetUserId);
+                var targetUser = await _userRepository.GetUserDetailsByIdAsync(targetUserId);
                 if (targetUser == null)
                 {
                     _logger.LogWarning($"Target user {targetUserId} not found");
@@ -250,8 +241,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var user = await _context.Users.FindAsync(userId);
-                return user?.Role;
+                return await _userRepository.GetUserRoleAsync(userId);
             }
             catch (Exception ex)
             {
@@ -264,7 +254,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var user = await _context.Users.FindAsync(userId);
+                var user = await _userRepository.GetUserDetailsByIdAsync(userId);
                 if (user == null)
                 {
                     _logger.LogWarning($"User {userId} not found for marking default password");
@@ -272,8 +262,7 @@ namespace QuizPortalAPI.Services
                 }
 
                 user.IsDefaultPassword = true;
-                _context.Users.Update(user);
-                await _context.SaveChangesAsync();
+                await _userRepository.UpdateAsync(user);
 
                 _logger.LogInformation($"Marked password as default for user {userId}");
             }
@@ -288,7 +277,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var user = await _context.Users.FindAsync(userId);
+                var user = await _userRepository.GetUserDetailsByIdAsync(userId);
                 if (user == null)
                     return false;
 
@@ -300,8 +289,7 @@ namespace QuizPortalAPI.Services
                 user.Password = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);
                 user.IsDefaultPassword = false;
 
-                _context.Users.Update(user);
-                await _context.SaveChangesAsync();
+                await _userRepository.UpdateAsync(user);
 
                 _logger.LogInformation($"Password changed successfully for user: {user.Email}");
                 return true;
@@ -330,7 +318,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var user = await _context.Users.FindAsync(userId);
+                var user = await _userRepository.GetUserDetailsByIdAsync(userId);
                 if (user == null)
                     return false;
 

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using QuizPortalAPI.Data;
+using QuizPortalAPI.DAL.ExamRepo;
+using QuizPortalAPI.DAL.UserRepo;
 using QuizPortalAPI.DTOs.Exam;
 using QuizPortalAPI.Models;
 
@@ -7,13 +8,14 @@ namespace QuizPortalAPI.Services
 {
     public class ExamService : IExamService
     {
-        private readonly AppDbContext _context;
         private readonly ILogger<ExamService> _logger;
-
-        public ExamService(AppDbContext context, ILogger<ExamService> logger)
+        private readonly IExamRepository _examRepository;
+        private readonly IUserRepository _userRepository;
+        public ExamService(ILogger<ExamService> logger, IExamRepository examRepository, IUserRepository userRepository)
         {
-            _context = context;
             _logger = logger;
+            _examRepository = examRepository;
+            _userRepository = userRepository;
         }
 
         /// <summary>
@@ -23,7 +25,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var teacher = await _context.Users.FindAsync(teacherId);
+                var teacher = await _userRepository.GetUserDetailsByIdAsync(teacherId);
 
                 if (string.IsNullOrWhiteSpace(createExamDTO.Title))
                     throw new InvalidOperationException("Exam title is required");
@@ -52,7 +54,7 @@ namespace QuizPortalAPI.Services
 
                 // Generate unique access code
                 string accessCode = GenerateAccessCode();
-                
+
                 // Create exam entity
                 var exam = new Exam
                 {
@@ -68,9 +70,7 @@ namespace QuizPortalAPI.Services
                     CreatedAt = DateTime.UtcNow
                 };
 
-                // Save to database
-                _context.Exams.Add(exam);
-                await _context.SaveChangesAsync();
+                await _examRepository.CreateAsync(exam);
 
                 _logger.LogInformation($"Exam '{exam.Title}' created by teacher {teacherId} with ID {exam.ExamID}");
 
@@ -81,7 +81,7 @@ namespace QuizPortalAPI.Services
                 _logger.LogWarning($"Invalid operation in CreateExamAsync: {ex.Message}");
                 throw;
             }
-            
+
             catch (Exception ex)
             {
                 _logger.LogError($"Error creating exam: {ex.Message}");
@@ -96,11 +96,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams
-                    .Include(e => e.CreatedByUser)
-                    .Include(e => e.Questions)
-                    .FirstOrDefaultAsync(e => e.ExamID == examId);
-
+                var exam = await _examRepository.GetExamWithQuestionsByIdWithCreatorAsync(examId);
                 if (exam == null)
                 {
                     _logger.LogWarning($"Exam {examId} not found");
@@ -124,11 +120,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exams = await _context.Exams
-                    .Include(e => e.Questions)
-                    .Where(e => e.CreatedBy == teacherId)
-                    .OrderByDescending(e => e.CreatedAt)
-                    .ToListAsync();
+                var exams = await _examRepository.GetTeacherExamsWithQuestionsAsync(teacherId);
 
                 _logger.LogInformation($"Retrieved {exams.Count} exams for teacher {teacherId}");
                 return exams.Select(MapToExamListDTO).ToList();
@@ -147,11 +139,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exams = await _context.Exams
-                    .Include(e => e.CreatedByUser)
-                    .Include(e => e.Questions)
-                    .OrderByDescending(e => e.CreatedAt)
-                    .ToListAsync();
+                var exams = await _examRepository.GetAllExamsForAdminAsync();
 
                 _logger.LogInformation($"Admin retrieved all {exams.Count} exams");
                 return exams.Select(MapToExamListDTO).ToList();
@@ -163,126 +151,6 @@ namespace QuizPortalAPI.Services
             }
         }
 
-        /// <summary>
-        /// Teacher updates their exam
-        /// </summary>
-        // public async Task<ExamResponseDTO?> UpdateExamAsync(int examId, int teacherId, UpdateExamDTO updateExamDTO)
-        // {
-        //     try
-        //     {
-        //         if (updateExamDTO == null)
-        //             throw new ArgumentNullException(nameof(updateExamDTO));
-
-        //         // Get exam
-        //         var exam = await _context.Exams
-        //             .Include(e => e.CreatedByUser)
-        //             .FirstOrDefaultAsync(e => e.ExamID == examId);
-
-        //         if (exam == null)
-        //         {
-        //             _logger.LogWarning($"Exam {examId} not found");
-        //             return null;
-        //         }
-
-        //         // Verify ownership
-        //         if (exam.CreatedBy != teacherId)
-        //         {
-        //             _logger.LogWarning($"Teacher {teacherId} attempted to update exam {examId} they don't own");
-        //             throw new UnauthorizedAccessException("You can only update your own exams");
-        //         }
-
-        //         // Prevent updates if exam is active or ended
-        //         if (DateTime.UtcNow >= exam.ScheduleStart)
-        //         {
-        //             _logger.LogWarning($"Attempted to update exam {examId} that is active or has ended");
-        //             throw new InvalidOperationException("Exam details can only be updated while the exam is upcoming. Once an exam starts, it cannot be modified.");
-        //         }
-
-        //         // Update allowed fields
-        //         if (!string.IsNullOrWhiteSpace(updateExamDTO.Title))
-        //         {
-        //             if (updateExamDTO.Title.Length < 3 || updateExamDTO.Title.Length > 200)
-        //                 throw new InvalidOperationException("Title must be between 3 and 200 characters");
-        //             exam.Title = updateExamDTO.Title;
-        //         }
-
-        //         if (updateExamDTO.Description != null)
-        //             exam.Description = updateExamDTO.Description;
-
-        //         if (updateExamDTO.BatchRemark != null)
-        //             exam.BatchRemark = updateExamDTO.BatchRemark;
-
-        //         if (updateExamDTO.DurationMinutes.HasValue)
-        //         {
-        //             if (updateExamDTO.DurationMinutes <= 0)
-        //                 throw new InvalidOperationException("Duration must be greater than 0");
-        //             exam.DurationMinutes = updateExamDTO.DurationMinutes.Value;
-        //         }
-
-        //         if (updateExamDTO.ScheduleStart.HasValue && updateExamDTO.ScheduleEnd.HasValue)
-        //         {
-        //             if (updateExamDTO.ScheduleStart >= updateExamDTO.ScheduleEnd)
-        //                 throw new InvalidOperationException("Schedule start must be before end");
-        //             exam.ScheduleStart = updateExamDTO.ScheduleStart.Value;
-        //             exam.ScheduleEnd = updateExamDTO.ScheduleEnd.Value;
-        //         }
-        //         else if (updateExamDTO.ScheduleStart.HasValue || updateExamDTO.ScheduleEnd.HasValue)
-        //         {
-        //             throw new InvalidOperationException("Both schedule start and end times must be provided together");
-        //         }
-
-        //         // Validate duration doesn't exceed schedule window (after updates)
-        //         var scheduleWindowMinutes = (exam.ScheduleEnd - exam.ScheduleStart).TotalMinutes;
-        //         if (exam.DurationMinutes > scheduleWindowMinutes)
-        //             throw new InvalidOperationException(
-        //                 $"Exam duration ({exam.DurationMinutes} minutes) cannot exceed the time window between start and end times ({scheduleWindowMinutes:F0} minutes)");
-
-        //         if (updateExamDTO.PassingPercentage.HasValue)
-        //         {
-        //             if (updateExamDTO.PassingPercentage < 0 || updateExamDTO.PassingPercentage > 100)
-        //                 throw new InvalidOperationException("Passing percentage must be between 0 and 100");
-        //             exam.PassingPercentage = updateExamDTO.PassingPercentage.Value;
-        //         }
-
-        //         if (updateExamDTO.HasNegativeMarking.HasValue)
-        //             exam.HasNegativeMarking = updateExamDTO.HasNegativeMarking.Value;
-
-        //         // Update password if provided
-        //         if (!string.IsNullOrWhiteSpace(updateExamDTO.AccessPassword))
-        //         {
-        //             if (updateExamDTO.AccessPassword.Length < 6)
-        //                 throw new InvalidOperationException("Password must be at least 6 characters");
-        //             exam.AccessPassword = BCrypt.Net.BCrypt.HashPassword(updateExamDTO.AccessPassword);
-        //         }
-
-        //         // Save changes
-        //         _context.Exams.Update(exam);
-        //         await _context.SaveChangesAsync();
-
-        //         _logger.LogInformation($"Exam {examId} updated by teacher {teacherId}");
-        //         return MapToExamResponseDTO(exam, exam.CreatedByUser?.FullName ?? "Unknown");
-        //     }
-        //     catch (ArgumentNullException ex)
-        //     {
-        //         _logger.LogError($"Validation error in UpdateExamAsync: {ex.Message}");
-        //         throw;
-        //     }
-        //     catch (InvalidOperationException ex)
-        //     {
-        //         _logger.LogWarning($"Invalid operation in UpdateExamAsync: {ex.Message}");
-        //         throw;
-        //     }
-        //     catch (UnauthorizedAccessException ex)
-        //     {
-        //         _logger.LogWarning($"Unauthorized access in UpdateExamAsync: {ex.Message}");
-        //         throw;
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //         _logger.LogError($"Error updating exam {examId}: {ex.Message}");
-        //         throw;
-        //     }
-        // }
 
         public async Task<ExamResponseDTO?> UpdateExamAsync(int examId, int teacherId, UpdateExamDTO updateExamDTO)
         {
@@ -293,9 +161,7 @@ namespace QuizPortalAPI.Services
                     throw new ArgumentNullException(nameof(updateExamDTO));
 
                 // Get exam with related data
-                var exam = await _context.Exams
-                    .Include(e => e.CreatedByUser)
-                    .FirstOrDefaultAsync(e => e.ExamID == examId);
+                var exam = await _examRepository.GetExamByIdWithCreatorDetails(examId);
 
                 if (exam == null)
                 {
@@ -461,9 +327,7 @@ namespace QuizPortalAPI.Services
                     return MapToExamResponseDTO(exam, exam.CreatedByUser?.FullName ?? "Unknown");
                 }
 
-                // Save changes to database
-                _context.Exams.Update(exam);
-                await _context.SaveChangesAsync();
+                await _examRepository.UpdateAsync(exam);
 
                 // Log successful update with details
                 _logger.LogInformation(
@@ -505,7 +369,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.GetExamDetailsByIdAsync(examId);
                 if (exam == null)
                 {
                     _logger.LogWarning($"Exam {examId} not found");
@@ -526,8 +390,7 @@ namespace QuizPortalAPI.Services
                     throw new InvalidOperationException("Exam can only be deleted while it is upcoming. Once an exam starts, it cannot be deleted.");
                 }
 
-                _context.Exams.Remove(exam);
-                await _context.SaveChangesAsync();
+                await _examRepository.DeleteAsync(exam);
 
                 _logger.LogInformation($"Exam {examId} deleted by teacher {teacherId}");
                 return true;
@@ -559,10 +422,7 @@ namespace QuizPortalAPI.Services
                 if (string.IsNullOrWhiteSpace(accessCode))
                     throw new ArgumentException("Access code is required");
 
-                var exam = await _context.Exams
-                    .Include(e => e.CreatedByUser)
-                    .Include(e => e.Questions)
-                    .FirstOrDefaultAsync(e => e.AccessCode == accessCode);
+                var exam = await _examRepository.GetExamByAccessCodeAsync(accessCode);
 
                 if (exam == null)
                 {
@@ -663,7 +523,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.GetExamDetailsByIdAsync(examId);
                 return exam != null && exam.CreatedBy == teacherId;
             }
             catch (Exception ex)
@@ -673,33 +533,8 @@ namespace QuizPortalAPI.Services
             }
         }
 
-        /// <summary>
-        /// Check if access code already exists
-        /// </summary>
-        public async Task<bool> ExamExistsByAccessCodeAsync(string accessCode)
-        {
-            try
-            {
-                return await _context.Exams.AnyAsync(e => e.AccessCode == accessCode);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error checking access code: {ex.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Generate unique access code (6 alphanumeric characters)
-        /// </summary>
         public string GenerateAccessCode()
         {
-            // const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            // var random = new Random();
-            // return new string(Enumerable.Range(0, 6)
-            //     .Select(_ => chars[random.Next(chars.Length)])
-            //     .ToArray());
-
             Guid accessCode = Guid.NewGuid();
             return accessCode.ToString();
         }
@@ -721,11 +556,11 @@ namespace QuizPortalAPI.Services
                 CreatedByUserName = createdByUserName,
                 BatchRemark = exam.BatchRemark,
                 DurationMinutes = exam.DurationMinutes,
-                ScheduleStart = exam.ScheduleStart.ToLocalTime(),
-                ScheduleEnd = exam.ScheduleEnd.ToLocalTime(),
+                ScheduleStart = exam.ScheduleStart,
+                ScheduleEnd = exam.ScheduleEnd,
                 PassingPercentage = exam.PassingPercentage,
-                // TotalMarks = exam.TotalMarks,  // Computed property
-                // PassingMarks = exam.PassingMarks,  // Computed property
+                TotalMarks = exam.TotalMarks,  // Computed property
+                PassingMarks = exam.PassingMarks,  // Computed property
                 AccessCode = exam.AccessCode,
                 CreatedAt = exam.CreatedAt,
                 // UpdatedAt = exam.UpdatedAt,
@@ -742,17 +577,13 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams
-                    .Include(e => e.Questions!)
-                    .ThenInclude(q => q.Options)
-                    .FirstOrDefaultAsync(e => e.ExamID == examId);
+                var exam = await _examRepository.GetExamWithQuestionsForStudentAsync(examId);
 
                 if (exam == null)
                 {
                     _logger.LogWarning($"Exam {examId} not found");
                     return null;
                 }
-
 
                 List<object> questions = new();
 

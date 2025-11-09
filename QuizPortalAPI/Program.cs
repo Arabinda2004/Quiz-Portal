@@ -6,6 +6,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using QuizPortalAPI.DAL.ExamRepo;
+using QuizPortalAPI.DAL.QuestionOptionRepo;
+using QuizPortalAPI.DAL.QuestionRepo;
+using QuizPortalAPI.DAL.ResultRepo;
+using QuizPortalAPI.DAL.UserRepo;
+using QuizPortalAPI.DAL.ExamPublicationRepo;
+using QuizPortalAPI.DAL.GradingRecordRepo;
+using QuizPortalAPI.DAL.StudentResponseRepo;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,6 +91,16 @@ builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<IStudentResponseService, StudentResponseService>();
 builder.Services.AddScoped<IResultService, ResultService>();
 builder.Services.AddScoped<IGradingService, GradingService>();
+
+// Repository services
+builder.Services.AddScoped<IExamRepository, ExamRepository>();
+builder.Services.AddScoped<IQuestionOptionRepository, QuestionOptionRepository>();
+builder.Services.AddScoped<IQuestionRepository, QuestionRepository>();
+builder.Services.AddScoped<IResultRepository, ResultRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IExamPublicationRepository, ExamPublicationRepository>();
+builder.Services.AddScoped<IGradingRecordRepository, GradingRecordRepository>();
+builder.Services.AddScoped<IStudentResponseRepository, StudentResponseRepository>();
 
 // Configure HTTP context for cookie access
 builder.Services.AddHttpContextAccessor();

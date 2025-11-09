@@ -26,11 +26,6 @@ namespace QuizPortalAPI.Services
         Task<AuthResponseDTO> ChangePasswordAsync(int userId, ChangePasswordDTO changePasswordDTO);
 
         /// <summary>
-        /// Logout user
-        /// </summary>
-        Task<bool> LogoutAsync(int userId);
-
-        /// <summary>
         /// Validate JWT token and return user claims
         /// </summary>
         Task<bool> ValidateTokenAsync(string token);

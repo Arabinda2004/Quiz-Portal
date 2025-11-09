@@ -1,5 +1,6 @@
-using Microsoft.EntityFrameworkCore;
-using QuizPortalAPI.Data;
+using QuizPortalAPI.DAL.ExamRepo;
+using QuizPortalAPI.DAL.QuestionOptionRepo;
+using QuizPortalAPI.DAL.QuestionRepo;
 using QuizPortalAPI.DTOs.Question;
 using QuizPortalAPI.Models;
 
@@ -7,13 +8,17 @@ namespace QuizPortalAPI.Services
 {
     public class QuestionService : IQuestionService
     {
-        private readonly AppDbContext _context;
         private readonly ILogger<QuestionService> _logger;
+        private readonly IExamRepository _examRepository;
+        private readonly IQuestionRepository _questionRepository;
+        private readonly IQuestionOptionRepository _questionOptionRepository;
 
-        public QuestionService(AppDbContext context, ILogger<QuestionService> logger)
+        public QuestionService(ILogger<QuestionService> logger, IExamRepository examRepository, IQuestionRepository questionRepository, IQuestionOptionRepository questionOptionRepository)
         {
-            _context = context;
             _logger = logger;
+            _examRepository = examRepository;
+            _questionRepository = questionRepository;
+            _questionOptionRepository = questionOptionRepository;
         }
 
         /// <summary>
@@ -26,7 +31,7 @@ namespace QuizPortalAPI.Services
                 if (string.IsNullOrWhiteSpace(createQuestionDTO.QuestionText))
                     throw new InvalidOperationException("Question text is required");
 
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.FindExamByIdAsync(examId);
                 if (exam == null)
                     throw new InvalidOperationException("Exam not found");
 
@@ -80,8 +85,7 @@ namespace QuizPortalAPI.Services
                     }).ToList();
                 }
 
-                _context.Questions.Add(question);
-                await _context.SaveChangesAsync();
+                await _questionRepository.AddAsync(question);
 
                 _logger.LogInformation($"Question {question.QuestionID} created for exam {examId} by teacher {teacherId}");
                 return MapToQuestionResponseDTO(question);
@@ -110,9 +114,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var question = await _context.Questions
-                    .Include(q => q.Options)
-                    .FirstOrDefaultAsync(q => q.QuestionID == questionId);
+                var question = await _questionRepository.GetQuestionsWithOptionsbyIdAsync(questionId);
 
                 if (question == null)
                 {
@@ -136,11 +138,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var questions = await _context.Questions
-                    .Where(q => q.ExamID == examId)
-                    .Include(q => q.Options)
-                    .OrderBy(q => q.QuestionID)
-                    .ToListAsync();
+                var questions = await _questionRepository.GetQuestionsWithOptionsForAnExamByIdAsync(examId);
 
                 _logger.LogInformation($"Retrieved {questions.Count} questions for exam {examId}");
                 return questions.Select(q => MapToQuestionListDTO(q)).ToList();
@@ -163,9 +161,7 @@ namespace QuizPortalAPI.Services
                     throw new ArgumentNullException(nameof(updateQuestionDTO));
 
                 // Get question with options
-                var question = await _context.Questions
-                    .Include(q => q.Options)
-                    .FirstOrDefaultAsync(q => q.QuestionID == questionId);
+                var question = await _questionRepository.GetQuestionsWithOptionsbyIdAsync(questionId);
 
                 if (question == null)
                 {
@@ -180,8 +176,7 @@ namespace QuizPortalAPI.Services
                     throw new UnauthorizedAccessException("You can only update your own questions");
                 }
 
-                // Check if exam has started (can only update questions in upcoming exams)
-                var exam = await _context.Exams.FindAsync(question.ExamID);
+                var exam = await _examRepository.FindExamByIdAsync(question.ExamID);
                 if (exam != null)
                 {
                     var now = DateTime.UtcNow;
@@ -232,7 +227,7 @@ namespace QuizPortalAPI.Services
 
                     foreach (var option in optionsToRemove)
                     {
-                        _context.QuestionOptions.Remove(option);
+                        await _questionOptionRepository.RemoveAsync(option);
                     }
 
                     // Update existing options
@@ -278,8 +273,7 @@ namespace QuizPortalAPI.Services
                 }
 
                 // Save changes
-                _context.Questions.Update(question);
-                await _context.SaveChangesAsync();
+                await _questionRepository.UpdateAsync(question);
 
                 _logger.LogInformation($"Question {questionId} updated by teacher {teacherId}");
                 return MapToQuestionResponseDTO(question);
@@ -313,7 +307,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var question = await _context.Questions.FindAsync(questionId);
+                var question = await _questionRepository.FindQuestionWithIdAsync(questionId);
                 if (question == null)
                 {
                     _logger.LogWarning($"Question {questionId} not found");
@@ -328,7 +322,7 @@ namespace QuizPortalAPI.Services
                 }
 
                 // Check if exam has started (can only delete questions from upcoming exams)
-                var exam = await _context.Exams.FindAsync(question.ExamID);
+                var exam = await _examRepository.FindExamByIdAsync(question.ExamID);
                 if (exam != null)
                 {
                     var now = DateTime.UtcNow;
@@ -339,8 +333,7 @@ namespace QuizPortalAPI.Services
                     }
                 }
 
-                _context.Questions.Remove(question);
-                await _context.SaveChangesAsync();
+                await _questionRepository.DeleteAsync(question);
 
                 _logger.LogInformation($"Question {questionId} deleted by teacher {teacherId}");
                 return true;
@@ -364,7 +357,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var question = await _context.Questions.FindAsync(questionId);
+                var question = await _questionRepository.FindQuestionWithIdAsync(questionId);
                 return question != null && question.CreatedBy == teacherId;
             }
             catch (Exception ex)
@@ -381,7 +374,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.FindExamByIdAsync(examId);
                 return exam != null && exam.CreatedBy == teacherId;
             }
             catch (Exception ex)
@@ -398,7 +391,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                return await _context.Questions.CountAsync(q => q.ExamID == examId);
+                return await _questionRepository.GetExamQuestionCountByExamIdAsync(examId);
             }
             catch (Exception ex)
             {
@@ -414,9 +407,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var totalMarks = await _context.Questions
-                    .Where(q => q.ExamID == examId)
-                    .SumAsync(q => q.Marks);
+                var totalMarks = await _examRepository.GetExamTotalMarksByExamIdAsync(examId);
 
                 return totalMarks;
             }
@@ -434,7 +425,7 @@ namespace QuizPortalAPI.Services
         {
             try
             {
-                var exam = await _context.Exams.FindAsync(examId);
+                var exam = await _examRepository.FindExamByIdAsync(examId);
                 if (exam == null)
                     return false;
 

@@ -723,7 +723,7 @@ export default function QuestionForm() {
                           disabled={examStatus !== 'Upcoming'}
                         />
                       </div>
-                      <OptionControls>
+                      {/* <OptionControls>
                         <RemoveButton
                           type="button"
                           onClick={() => handleRemoveOption(index)}
@@ -736,7 +736,7 @@ export default function QuestionForm() {
                         >
                           Remove
                         </RemoveButton>
-                      </OptionControls>
+                      </OptionControls> */}
                     </OptionItem>
                   ))}
 
