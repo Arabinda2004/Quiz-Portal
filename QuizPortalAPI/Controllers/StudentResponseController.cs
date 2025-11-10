@@ -43,8 +43,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
 
                 if (createResponseDTO == null)
                     return BadRequest(new { message = "Invalid request data" });
@@ -91,9 +89,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var studentId = GetLoggedInUserId()!;
 
                 var examResponses = await _responseService.GetStudentExamResponsesAsync(examId, studentId.Value);
@@ -135,8 +130,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0 || questionId <= 0)
-                    return BadRequest(new { message = "Invalid exam or question ID" });
 
                 if (updateResponseDTO == null)
                     return BadRequest(new { message = "Invalid request data" });
@@ -190,9 +183,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var studentId = GetLoggedInUserId()!;
 
                 // Get count
@@ -218,8 +208,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
 
                 var studentId = GetLoggedInUserId()!;
 
@@ -270,8 +258,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0 || id <= 0)
-                    return BadRequest(new { message = "Invalid exam or response ID" });
 
                 var studentId = GetLoggedInUserId()!;
 
@@ -314,8 +300,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
 
                 var studentId = GetLoggedInUserId()!;
 

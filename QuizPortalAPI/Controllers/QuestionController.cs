@@ -41,9 +41,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 if (createQuestionDTO == null)
                     return BadRequest(new { message = "Invalid request data" });
 
@@ -85,10 +82,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // Validate input
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var teacherId = GetLoggedInUserId()!;
                 // Verify teacher owns the exam
                 var isOwner = await _questionService.IsExamOwnerAsync(examId, teacherId.Value);
@@ -130,12 +123,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-
-                if (examId <= 0 || id <= 0)
-                {
-                    return BadRequest(new { message = "Invalid exam or question ID" }); 
-                }
-
                 var teacherId = GetLoggedInUserId()!;
 
                 var isOwner = await _questionService.IsExamOwnerAsync(examId, teacherId.Value);
@@ -178,10 +165,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // Validate input
-                if (examId <= 0 || id <= 0)
-                    return BadRequest(new { message = "Invalid exam or question ID" });
-
                 if (updateQuestionDTO == null)
                     return BadRequest(new { message = "Invalid request data" });
 
@@ -250,10 +233,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // Validate input
-                if (examId <= 0 || id <= 0)
-                    return BadRequest(new { message = "Invalid exam or question ID" });
-
                 var teacherId = GetLoggedInUserId()!;
 
                 // Verify teacher owns the exam
@@ -302,9 +281,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var teacherId = GetLoggedInUserId()!;
 
                 var isOwner = await _questionService.IsExamOwnerAsync(examId, teacherId.Value);

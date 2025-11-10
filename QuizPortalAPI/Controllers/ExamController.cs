@@ -134,9 +134,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (id <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 if (updateExamDTO == null)
                     return BadRequest(new { message = "Invalid request data" });
 
@@ -185,10 +182,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                // Validate input
-                if (id <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var teacherId = GetLoggedInUserId();
                 if (teacherId == null)
                     return Unauthorized(new { message = "Invalid or missing user ID" });
@@ -229,9 +222,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (id <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var studentId = GetLoggedInUserId();
                 if (studentId == null)
                     return Unauthorized(new { message = "Invalid or missing user ID" });

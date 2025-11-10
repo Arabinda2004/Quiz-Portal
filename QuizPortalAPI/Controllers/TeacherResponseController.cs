@@ -39,9 +39,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var teacherId = GetLoggedInUserId()!;
 
                 var isOwner = await _examService.IsTeacherExamOwnerAsync(examId, teacherId.Value);
@@ -86,8 +83,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0 || studentId <= 0)
-                    return BadRequest(new { message = "Invalid exam or student ID" });
 
                 var teacherId = GetLoggedInUserId()!;
 
@@ -138,9 +133,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var teacherId = GetLoggedInUserId()!;
 
                 var isOwner = await _examService.IsTeacherExamOwnerAsync(examId, teacherId.Value);

@@ -37,9 +37,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var teacherId = GetLoggedInUserId()!;
 
                 var pendingResponses = await _gradingService.GetPendingResponsesAsync(examId, teacherId.Value, page, pageSize);
@@ -80,9 +77,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0 || studentId <= 0)
-                    return BadRequest(new { message = "Invalid exam or student ID" });
-
                 var teacherId = GetLoggedInUserId()!;
 
                 var pendingResponses = await _gradingService.GetPendingResponsesByStudentAsync(examId, studentId, teacherId.Value, page, pageSize);
@@ -119,9 +113,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (responseId <= 0)
-                    return BadRequest(new { message = "Invalid response ID" });
-
                 var teacherId = GetLoggedInUserId()!;
 
                 var response = await _gradingService.GetResponseForGradingAsync(responseId, teacherId.Value);
@@ -156,9 +147,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (responseId <= 0)
-                    return BadRequest(new { message = "Invalid response ID" });
-
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
@@ -203,9 +191,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var teacherId = GetLoggedInUserId()!;
 
                 var stats = await _gradingService.GetGradingStatsAsync(examId, teacherId.Value);
@@ -243,9 +228,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (responseId <= 0)
-                    return BadRequest(new { message = "Invalid response ID" });
-
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 

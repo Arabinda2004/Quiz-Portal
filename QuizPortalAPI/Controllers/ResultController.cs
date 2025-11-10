@@ -74,9 +74,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var studentId = GetLoggedInUserId()!;
 
                 var result = await _resultService.GetStudentExamResultAsync(examId, studentId.Value);
@@ -122,8 +119,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
 
                 if (page <= 0) page = 1;
                 if (pageSize <= 0) pageSize = 10;
@@ -169,9 +164,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
@@ -221,9 +213,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var teacherId = GetLoggedInUserId()!;
 
                 var status = await _resultService.GetExamPublicationStatusAsync(examId, teacherId.Value);
@@ -261,9 +250,6 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
                 var teacherId = GetLoggedInUserId()!;
 
                 var result = await _resultService.UnpublishExamAsync(
