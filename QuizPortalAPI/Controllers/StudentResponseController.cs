@@ -102,7 +102,7 @@ namespace QuizPortalAPI.Controllers
                     answeredQuestions = examResponses.AnsweredQuestions,
                     unansweredQuestions = examResponses.UnansweredQuestions,
                     progressPercentage = examResponses.TotalQuestions > 0 
-                        ? Math.Round(((decimal)examResponses.AnsweredQuestions / examResponses.TotalQuestions) * 100, 2)
+                        ? Math.Round((decimal)examResponses.AnsweredQuestions / examResponses.TotalQuestions * 100, 2)
                         : 0,
                     data = examResponses.Responses
                 });

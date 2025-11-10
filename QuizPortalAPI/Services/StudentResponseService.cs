@@ -542,29 +542,6 @@ namespace QuizPortalAPI.Services
             }
         }
 
-        private async Task<StudentResponseDTO> MapToStudentResponseDTOAsync(StudentResponse response, Question question)
-        {
-            // This method is kept for backward compatibility but not actively used
-            // Check if there's a grading record for this response
-            var gradingRecord = await _gradingRecordRepo.GetGradedRecordByResponseIdAsync(response.ResponseID);
-
-            return new StudentResponseDTO
-            {
-                ResponseID = response.ResponseID,
-                ExamID = response.ExamID,
-                QuestionID = response.QuestionID,
-                StudentID = response.StudentID,
-                AnswerText = response.AnswerText,
-                IsCorrect = response.IsCorrect,
-                MarksObtained = response.MarksObtained,
-                Feedback = gradingRecord?.Feedback,
-                SubmittedAt = response.SubmittedAt,
-                QuestionText = question.QuestionText,
-                QuestionType = (int)question.QuestionType,
-                QuestionMarks = question.Marks
-            };
-        }
-
         private StudentResponseDTO MapToStudentResponseDTO(StudentResponse response, Question question)
         {
             return new StudentResponseDTO

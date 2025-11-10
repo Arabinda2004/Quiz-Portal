@@ -141,4 +141,10 @@ public class ResultRepository : IResultRepository
         return await _context.Results
                     .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId);
     }
+    public async Task<Result?> GetExistingResultOfAStudentByIdAsync(int examId, int studentId)
+    {
+        return await _context.Results
+                        .FirstOrDefaultAsync(r => r.ExamID == examId && r.StudentID == studentId &&
+                            (r.Status == "Completed" || r.Status == "Graded"));
+    }
 }

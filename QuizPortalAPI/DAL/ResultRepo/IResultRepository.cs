@@ -19,4 +19,5 @@ public interface IResultRepository
     Task<int> CalculateRankAsync(int examId, decimal totalMarks);
     Task<int> GetDistinctStudentResultCountAsync(int examId);
     Task<Result?> FindResultByExamAndStudentAsync(int examId, int studentId);
+    Task<Result?> GetExistingResultOfAStudentByIdAsync(int examId, int studentId);
 }

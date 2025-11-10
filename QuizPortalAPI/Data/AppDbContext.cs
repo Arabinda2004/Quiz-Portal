@@ -8,7 +8,6 @@ namespace QuizPortalAPI.Data
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         public DbSet<User> Users { get; set; }
-        // public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<Exam> Exams { get; set; }
         public DbSet<Question> Questions { get; set; }
         public DbSet<QuestionOption> QuestionOptions { get; set; }
@@ -26,13 +25,6 @@ namespace QuizPortalAPI.Data
                 .HasIndex(u => u.Email)
                 .IsUnique()
                 .HasDatabaseName("IX_User_Email");
-
-            // // AuditLog configuration
-            // modelBuilder.Entity<AuditLog>()
-            //     .HasOne(al => al.User)
-            //     .WithMany()
-            //     .HasForeignKey(al => al.UserId)
-            //     .OnDelete(DeleteBehavior.Cascade);
 
             // Exam configuration
             modelBuilder.Entity<Exam>()

@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using QuizPortalAPI.Data;
 using QuizPortalAPI.DTOs.Exam;
 using QuizPortalAPI.Services;
+using QuizPortalAPI.DAL.ResultRepo;
 using System.Security.Claims;
+    
 
 namespace QuizPortalAPI.Controllers
 {
@@ -14,13 +14,13 @@ namespace QuizPortalAPI.Controllers
     {
         private readonly IExamService _examService;
         private readonly ILogger<ExamController> _logger;
-        private readonly AppDbContext _context;
+        private readonly IResultRepository _resultRepository;
 
-        public ExamController(IExamService examService, ILogger<ExamController> logger, AppDbContext context)
+        public ExamController(IExamService examService, ILogger<ExamController> logger, IResultRepository resultRepository)
         {
             _examService = examService;
             _logger = logger;
-            _context = context;
+            _resultRepository = resultRepository;
         }
 
         private int? GetLoggedInUserId()
@@ -234,9 +234,7 @@ namespace QuizPortalAPI.Controllers
                     return NotFound(new { message = "Exam not found" });
                 }
 
-                var existingResult = await _context.Results
-                    .FirstOrDefaultAsync(r => r.ExamID == id && r.StudentID == studentId &&
-                        (r.Status == "Completed" || r.Status == "Graded"));
+                var existingResult = await _resultRepository.GetExistingResultOfAStudentByIdAsync(id, studentId.Value);
 
                 if (existingResult != null)
                 {
@@ -314,9 +312,7 @@ namespace QuizPortalAPI.Controllers
                 var studentId = GetLoggedInUserId();
                 if (studentId > 0 && accessResponse.ExamID > 0)
                 {
-                    var existingResult = await _context.Results
-                        .FirstOrDefaultAsync(r => r.ExamID == accessResponse.ExamID && r.StudentID == studentId &&
-                            (r.Status == "Completed" || r.Status == "Graded"));
+                    var existingResult = await _resultRepository.GetExistingResultOfAStudentByIdAsync(accessResponse.ExamID, studentId.Value);
 
                     if (existingResult != null)
                     {
