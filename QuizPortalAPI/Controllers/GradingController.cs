@@ -8,7 +8,7 @@ namespace QuizPortalAPI.Controllers
 {
     [ApiController]
     [Route("api/teacher/grading")]
-    [Authorize(Roles = "Teacher,Admin")]
+    [Authorize(Roles = "Teacher")]
     public class GradingController : ControllerBase
     {
         private readonly IGradingService _gradingService;
@@ -40,9 +40,7 @@ namespace QuizPortalAPI.Controllers
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var teacherId = GetLoggedInUserId()!;
 
                 var pendingResponses = await _gradingService.GetPendingResponsesAsync(examId, teacherId.Value, page, pageSize);
 
@@ -78,12 +76,6 @@ namespace QuizPortalAPI.Controllers
         /// GET /api/teacher/grading/exams/{examId}/students/{studentId}/pending
         /// </summary>
         [HttpGet("exams/{examId}/students/{studentId}/pending")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        [ProducesResponseType(StatusCodes.Status403Forbidden)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetPendingResponsesByStudent(int examId, int studentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
             try
@@ -91,9 +83,7 @@ namespace QuizPortalAPI.Controllers
                 if (examId <= 0 || studentId <= 0)
                     return BadRequest(new { message = "Invalid exam or student ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var teacherId = GetLoggedInUserId()!;
 
                 var pendingResponses = await _gradingService.GetPendingResponsesByStudentAsync(examId, studentId, teacherId.Value, page, pageSize);
 
@@ -132,9 +122,7 @@ namespace QuizPortalAPI.Controllers
                 if (responseId <= 0)
                     return BadRequest(new { message = "Invalid response ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var teacherId = GetLoggedInUserId()!;
 
                 var response = await _gradingService.GetResponseForGradingAsync(responseId, teacherId.Value);
                 if (response == null)
@@ -174,10 +162,7 @@ namespace QuizPortalAPI.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
-
+                var teacherId = GetLoggedInUserId()!;
                 var success = await _gradingService.GradeSingleResponseAsync(responseId, teacherId.Value, gradeDto);
 
                 _logger.LogInformation($"Teacher {teacherId} graded response {responseId} with {gradeDto.MarksObtained} marks");
@@ -221,9 +206,7 @@ namespace QuizPortalAPI.Controllers
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var teacherId = GetLoggedInUserId()!;
 
                 var stats = await _gradingService.GetGradingStatsAsync(examId, teacherId.Value);
 
@@ -266,9 +249,7 @@ namespace QuizPortalAPI.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var teacherId = GetLoggedInUserId()!;
 
                 var success = await _gradingService.RegradeResponseAsync(responseId, teacherId.Value, regradingDto);
 

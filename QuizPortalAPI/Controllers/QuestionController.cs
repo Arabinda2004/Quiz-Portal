@@ -50,9 +50,7 @@ namespace QuizPortalAPI.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var teacherId = GetLoggedInUserId()!;
 
                 var createdQuestion = await _questionService.CreateQuestionAsync(examId, teacherId.Value, createQuestionDTO);
 
@@ -91,10 +89,7 @@ namespace QuizPortalAPI.Controllers
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
-
+                var teacherId = GetLoggedInUserId()!;
                 // Verify teacher owns the exam
                 var isOwner = await _questionService.IsExamOwnerAsync(examId, teacherId.Value);
                 if (!isOwner)
@@ -141,11 +136,7 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(new { message = "Invalid exam or question ID" }); 
                 }
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                {
-                    return Unauthorized(new { message = "Invalid or missing User Id" });
-                }
+                var teacherId = GetLoggedInUserId()!;
 
                 var isOwner = await _questionService.IsExamOwnerAsync(examId, teacherId.Value);
                 if (!isOwner)
@@ -197,9 +188,7 @@ namespace QuizPortalAPI.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var teacherId = GetLoggedInUserId()!;
 
                 // Verify teacher owns the exam
                 var isExamOwner = await _questionService.IsExamOwnerAsync(examId, teacherId.Value);
@@ -265,9 +254,7 @@ namespace QuizPortalAPI.Controllers
                 if (examId <= 0 || id <= 0)
                     return BadRequest(new { message = "Invalid exam or question ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var teacherId = GetLoggedInUserId()!;
 
                 // Verify teacher owns the exam
                 var isExamOwner = await _questionService.IsExamOwnerAsync(examId, teacherId.Value);
@@ -318,9 +305,7 @@ namespace QuizPortalAPI.Controllers
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var teacherId = GetLoggedInUserId()!;
 
                 var isOwner = await _questionService.IsExamOwnerAsync(examId, teacherId.Value);
                 if (!isOwner)

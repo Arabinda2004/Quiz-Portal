@@ -78,16 +78,13 @@ namespace QuizPortalAPI.Controllers
             }
         }
 
-        //  SECURED: Users can only get their own profile
         [HttpGet("profile")]
         [Authorize]
         public async Task<ActionResult<UserResponseDTO>> GetProfile()
         {
             try
             {
-                var userId = GetLoggedInUserId();
-                if (userId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var userId = GetLoggedInUserId()!;
 
                 var user = await _userService.GetUserByIdAsync(userId.Value);
                 if (user == null)
@@ -118,9 +115,7 @@ namespace QuizPortalAPI.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var userId = GetLoggedInUserId();
-                if (userId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var userId = GetLoggedInUserId()!;
 
                 var updatedUser = await _userService.UpdateUserAsync(userId.Value, updateUserDTO);
                 if (updatedUser == null)
@@ -160,9 +155,7 @@ namespace QuizPortalAPI.Controllers
                 if (changePasswordDTO.CurrentPassword == changePasswordDTO.NewPassword)
                     return BadRequest(new { message = "New password must be different from current password" });
 
-                var userId = GetLoggedInUserId();
-                if (userId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var userId = GetLoggedInUserId()!;
 
                 var result = await _userService.ChangeUserPasswordAsync(userId.Value, changePasswordDTO);
                 if (!result)
@@ -189,9 +182,7 @@ namespace QuizPortalAPI.Controllers
                 if (deleteAccountDTO == null || string.IsNullOrWhiteSpace(deleteAccountDTO.Password))
                     return BadRequest(new { message = "Password is required to delete account" });
 
-                var userId = GetLoggedInUserId();
-                if (userId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var userId = GetLoggedInUserId()!;
 
                 //  Verify password before deletion
                 var user = await _userService.GetUserByIdAsync(userId.Value);

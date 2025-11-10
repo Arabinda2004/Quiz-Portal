@@ -2,11 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuizPortalAPI.DTOs.User;
 using QuizPortalAPI.Services;
-using System.Security.Claims;
 
 namespace QuizPortalAPI.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "Admin")]
     [ApiController]
     [Route("api/admin")]
     public class AdminController : ControllerBase
@@ -24,18 +23,11 @@ namespace QuizPortalAPI.Controllers
             _responseService = responseService;
         }
 
-        private int? GetLoggedInUserId()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return int.TryParse(userIdClaim, out var userId) ? userId : (int?)null;
-        }
-
         /// <summary>
         /// GET: api/admin/users
         /// Get all users (Admin only)
         /// </summary>
         [HttpGet("users")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<UserResponseDTO>>> GetAllUsers()
         {
             try
@@ -57,7 +49,6 @@ namespace QuizPortalAPI.Controllers
         /// Get a specific user by ID (Admin only)
         /// </summary>
         [HttpGet("users/{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<UserResponseDTO>> GetUserById(int id)
         {
             try
@@ -85,21 +76,11 @@ namespace QuizPortalAPI.Controllers
         /// GET /api/admin/exams/{examId}/responses/statistics
         /// </summary>
         [HttpGet("exams/{examId}/responses/statistics")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetExamStatistics(int examId)
         {
             try
-            {
-                if (examId <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
-                var adminId = GetLoggedInUserId();
-                if (adminId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
-
+            {   
                 var stats = await _responseService.GetExamStatisticsAsync(examId);
-
-                _logger.LogInformation($"Admin {adminId} retrieved statistics for exam {examId}");
                 return Ok(new { data = stats });
             }
             catch (Exception ex)
@@ -116,23 +97,15 @@ namespace QuizPortalAPI.Controllers
         /// GET /api/admin/exams/{id}
         /// </summary>
         [HttpGet("exams/{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetExamById(int id)
         {
             try
             {
-                if (id <= 0)
-                    return BadRequest(new { message = "Invalid exam ID" });
-
-                var adminId = GetLoggedInUserId();
-                if (adminId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
-                
                 var exam = await _examService.GetExamByIdAsync(id);
                 if (exam == null)
                     return NotFound(new { message = "Exam not found" });
 
-                _logger.LogInformation($"Admin {adminId} retrieved exam {id}");
+                _logger.LogInformation($"Admin retrieved exam {id}");
                 return Ok(new { data = exam });
             }
             catch (Exception ex)
@@ -140,6 +113,27 @@ namespace QuizPortalAPI.Controllers
                 _logger.LogError($"Error retrieving exam {id}: {ex.Message}");
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     new { message = "An error occurred while retrieving the exam" });
+            }
+        }
+        /// <summary>
+        /// Get all exams
+        /// GET /api/exams/all
+        /// </summary>
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllExams()
+        {
+            try
+            {
+                var exams = await _examService.GetAllExamsAsync();
+
+                _logger.LogInformation($"Admin retrieved all exams");
+                return Ok(new { count = exams.Count(), data = exams });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error retrieving all exams: {ex.Message}");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { message = "An error occurred while retrieving exams" });
             }
         }
     }

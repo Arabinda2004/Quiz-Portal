@@ -52,9 +52,7 @@ namespace QuizPortalAPI.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var studentId = GetLoggedInUserId();
-                if (studentId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var studentId = GetLoggedInUserId()!;
 
                 var canSubmit = await _responseService.CanSubmitAnswerAsync(examId, studentId.Value);
                 if (!canSubmit)
@@ -96,9 +94,7 @@ namespace QuizPortalAPI.Controllers
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
-                var studentId = GetLoggedInUserId();
-                if (studentId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var studentId = GetLoggedInUserId()!;
 
                 var examResponses = await _responseService.GetStudentExamResponsesAsync(examId, studentId.Value);
 
@@ -148,9 +144,7 @@ namespace QuizPortalAPI.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var studentId = GetLoggedInUserId();
-                if (studentId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var studentId = GetLoggedInUserId()!;
 
                 var canSubmit = await _responseService.CanSubmitAnswerAsync(examId, studentId.Value);
                 if (!canSubmit)
@@ -199,9 +193,7 @@ namespace QuizPortalAPI.Controllers
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
-                var studentId = GetLoggedInUserId();
-                if (studentId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var studentId = GetLoggedInUserId()!;
 
                 // Get count
                 var count = await _responseService.GetStudentResponseCountAsync(examId, studentId.Value);
@@ -229,9 +221,7 @@ namespace QuizPortalAPI.Controllers
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
-                var studentId = GetLoggedInUserId();
-                if (studentId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var studentId = GetLoggedInUserId()!;
 
                 var exam = await _examService.GetExamByIdAsync(examId);
                 if (exam == null)
@@ -283,9 +273,7 @@ namespace QuizPortalAPI.Controllers
                 if (examId <= 0 || id <= 0)
                     return BadRequest(new { message = "Invalid exam or response ID" });
 
-                var studentId = GetLoggedInUserId();
-                if (studentId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var studentId = GetLoggedInUserId()!;
 
                 var response = await _responseService.GetResponseByIdAsync(id);
                 if (response == null)
@@ -329,9 +317,7 @@ namespace QuizPortalAPI.Controllers
                 if (examId <= 0)
                     return BadRequest(new { message = "Invalid exam ID" });
 
-                var studentId = GetLoggedInUserId();
-                if (studentId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var studentId = GetLoggedInUserId()!;
 
                 var result = await _responseService.FinalizeExamSubmissionAsync(examId, studentId.Value);
                 

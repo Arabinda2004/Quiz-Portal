@@ -43,11 +43,9 @@ namespace QuizPortalAPI.Controllers
                     return BadRequest(ModelState);
 
                 var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
 
                 // Create exam
-                var createdExam = await _examService.CreateExamAsync(teacherId.Value, createExamDTO);
+                var createdExam = await _examService.CreateExamAsync(teacherId!.Value, createExamDTO);
 
                 _logger.LogInformation($"Exam created successfully by teacher {teacherId}");
                 return CreatedAtAction(nameof(GetExamById), new { id = createdExam.ExamID },
@@ -61,11 +59,6 @@ namespace QuizPortalAPI.Controllers
             catch (InvalidOperationException ex)
             {
                 _logger.LogWarning($"Invalid exam creation request: {ex.Message}");
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning($"Argument error in exam creation: {ex.Message}");
                 return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
@@ -86,10 +79,7 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
-
+                var teacherId = GetLoggedInUserId()!;
                 var exam = await _examService.GetExamByIdAsync(id);
                 if (exam == null)
                     return NotFound(new { message = "Exam not found" });
@@ -118,9 +108,7 @@ namespace QuizPortalAPI.Controllers
         {
             try
             {
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var teacherId = GetLoggedInUserId()!;
 
                 // Get teacher's exams
                 var exams = await _examService.GetTeacherExamsAsync(teacherId.Value);
@@ -131,34 +119,6 @@ namespace QuizPortalAPI.Controllers
             catch (Exception ex)
             {
                 _logger.LogError($"Error retrieving teacher exams: {ex.Message}");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { message = "An error occurred while retrieving exams" });
-            }
-        }
-
-        /// <summary>
-        /// Get all exams
-        /// GET /api/exams/all
-        /// </summary>
-        [HttpGet("all")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetAllExams()
-        {
-            try
-            {
-                var userId = GetLoggedInUserId();
-                if (userId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
-
-                // Get all exams
-                var exams = await _examService.GetAllExamsAsync();
-
-                _logger.LogInformation($"Admin {userId} retrieved all exams");
-                return Ok(new { count = exams.Count(), data = exams });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Error retrieving all exams: {ex.Message}");
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     new { message = "An error occurred while retrieving exams" });
             }
@@ -183,9 +143,7 @@ namespace QuizPortalAPI.Controllers
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
 
-                var teacherId = GetLoggedInUserId();
-                if (teacherId == null)
-                    return Unauthorized(new { message = "Invalid or missing user ID" });
+                var teacherId = GetLoggedInUserId()!;
 
                 var updatedExam = await _examService.UpdateExamAsync(id, teacherId.Value, updateExamDTO);
                 if (updatedExam == null)

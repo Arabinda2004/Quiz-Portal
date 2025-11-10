@@ -88,7 +88,7 @@ export default function AdminDashboard() {
     { id: 'exams', label: 'Exam Management', icon: '📝' },
     { id: 'reports', label: 'Reports', icon: '📈' },
     // { id: 'settings', label: 'Settings', icon: '⚙️' },
-    { id: 'audit', label: 'Audit Logs', icon: '🔍' },
+    // { id: 'audit', label: 'Audit Logs', icon: '🔍' },
   ]
 
   const navigateTo = id => {

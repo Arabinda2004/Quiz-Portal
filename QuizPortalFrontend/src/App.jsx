@@ -35,7 +35,7 @@ import ExamManagement from './pages/Admin/ExamManagement'
 import AdminExamDetail from './pages/Admin/AdminExamDetail'
 import SystemReports from './pages/Admin/SystemReports'
 import SystemSettings from './pages/Admin/SystemSettings'
-import AuditLogs from './pages/Admin/AuditLogs'
+// import AuditLogs from './pages/Admin/AuditLogs'
 
 function App() {
   return (
@@ -240,7 +240,7 @@ function App() {
             path="/admin/audit-logs"
             element={
               <ProtectedRoute requiredRole="Admin">
-                <AuditLogs />
+                {/* <AuditLogs /> */}
               </ProtectedRoute>
             }
           />
