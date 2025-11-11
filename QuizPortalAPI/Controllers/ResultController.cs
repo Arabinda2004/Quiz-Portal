@@ -30,27 +30,22 @@ namespace QuizPortalAPI.Controllers
 
         /// <summary>
         /// GET /api/results/my-completed-exams
-        /// Returns ALL completed exams, but masks sensitive data for unpublished results
+        /// Returns ALL completed exams
         /// </summary>
         [HttpGet("my-completed-exams")]
         [Authorize(Roles = "Student")]
-        public async Task<IActionResult> GetMyCompletedExams([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetMyCompletedExams()
         {
             try
             {
-                if (page <= 0) page = 1;
-                if (pageSize <= 0) pageSize = 10;
-
                 var studentId = GetLoggedInUserId()!;
 
-                var results = await _resultService.GetStudentResultsAsync(studentId.Value, page, pageSize);
+                var results = await _resultService.GetStudentResultsAsync(studentId.Value);
 
                 _logger.LogInformation($"Student {studentId} retrieved their completed exams - {results.Count} total");
                 return Ok(new
                 {
                     success = true,
-                    page = page,
-                    pageSize = pageSize,
                     totalCount = results.Count,
                     data = results
                 });
@@ -66,7 +61,7 @@ namespace QuizPortalAPI.Controllers
         /// <summary>
         /// Get result details with question-wise breakdown for logged-in student
         /// GET /api/results/exams/{examId}/details
-        /// Only returns details if result has been published by teacher (Status='Graded')
+        /// Only returns details if result has been published by teacher
         /// </summary>
         [HttpGet("exams/{examId}/details")]
         [Authorize(Roles = "Student")]
@@ -115,24 +110,18 @@ namespace QuizPortalAPI.Controllers
         /// </summary>
         [HttpGet("exams/{examId}/all-results")]
         [Authorize(Roles = "Teacher")]
-        public async Task<IActionResult> GetExamAllResults(int examId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetExamAllResults(int examId)
         {
             try
             {
-
-                if (page <= 0) page = 1;
-                if (pageSize <= 0) pageSize = 10;
-
                 var teacherId = GetLoggedInUserId()!;
 
-                var results = await _resultService.GetExamAllResultsAsync(examId, teacherId.Value, page, pageSize);
+                var results = await _resultService.GetExamAllResultsAsync(examId, teacherId.Value);
 
                 _logger.LogInformation($"Teacher {teacherId} retrieved results for exam {examId}");
                 return Ok(new
                 {
                     success = true,
-                    page = page,
-                    pageSize = pageSize,
                     totalCount = results.Count,
                     data = results
                 });
@@ -154,7 +143,6 @@ namespace QuizPortalAPI.Controllers
         }
 
         /// <summary>
-        /// Publish exam - checks if all responses are graded first
         /// POST /api/results/exams/{examId}/publish
         /// Only available after all responses are manually graded
         /// </summary>

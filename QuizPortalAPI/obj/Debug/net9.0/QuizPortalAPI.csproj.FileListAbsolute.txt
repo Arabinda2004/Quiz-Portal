@@ -125,6 +125,7 @@ D:\Online Exam Portal\QuizPortalAPI\obj\Debug\net9.0\QuizPortalAPI.AssemblyInfo.
 D:\Online Exam Portal\QuizPortalAPI\obj\Debug\net9.0\QuizPortalAPI.csproj.CoreCompileInputs.cache
 D:\Online Exam Portal\QuizPortalAPI\obj\Debug\net9.0\QuizPortalAPI.MvcApplicationPartsAssemblyInfo.cs
 D:\Online Exam Portal\QuizPortalAPI\obj\Debug\net9.0\QuizPortalAPI.MvcApplicationPartsAssemblyInfo.cache
+D:\Online Exam Portal\QuizPortalAPI\obj\Debug\net9.0\QuizPortalAPI.sourcelink.json
 D:\Online Exam Portal\QuizPortalAPI\obj\Debug\net9.0\rjimswa.dswa.cache.json
 D:\Online Exam Portal\QuizPortalAPI\obj\Debug\net9.0\rjsmrazor.dswa.cache.json
 D:\Online Exam Portal\QuizPortalAPI\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json
@@ -139,4 +140,3 @@ D:\Online Exam Portal\QuizPortalAPI\obj\Debug\net9.0\refint\QuizPortalAPI.dll
 D:\Online Exam Portal\QuizPortalAPI\obj\Debug\net9.0\QuizPortalAPI.pdb
 D:\Online Exam Portal\QuizPortalAPI\obj\Debug\net9.0\QuizPortalAPI.genruntimeconfig.cache
 D:\Online Exam Portal\QuizPortalAPI\obj\Debug\net9.0\ref\QuizPortalAPI.dll
-D:\Online Exam Portal\QuizPortalAPI\obj\Debug\net9.0\QuizPortalAPI.sourcelink.json

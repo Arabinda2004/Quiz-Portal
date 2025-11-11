@@ -59,22 +59,18 @@ namespace QuizPortalAPI.Services
         }
 
         /// <summary>
-        /// Get all results for a student (paginated)
+        /// Get all results for a student
         /// </summary>
-        public async Task<List<ResultDTO>> GetStudentResultsAsync(int studentId, int page, int pageSize)
+        public async Task<List<ResultDTO>> GetStudentResultsAsync(int studentId)
         {
             try
             {
-                var skip = (page - 1) * pageSize;
-
                 var results = await _resultRepository.GetStudentsAllResultByIdAsync(studentId);
 
-                var pagedResult = results.Skip(skip).Take(pageSize).ToList();
-
-                _logger.LogInformation($"Retrieved {pagedResult.Count} results for student {studentId} (page {page})");
+                _logger.LogInformation($"Retrieved {results.Count} results for student {studentId}");
                 
                 var resultDTOs = new List<ResultDTO>();
-                foreach (var r in pagedResult)
+                foreach (var r in results)
                 {
                     resultDTOs.Add(await MapToResultDTOAsync(r));
                 }
@@ -104,9 +100,9 @@ namespace QuizPortalAPI.Services
         }
 
         /// <summary>
-        /// Get all results for an exam with pagination
+        /// Get all results for an exam
         /// </summary>
-        public async Task<List<ResultDTO>> GetExamAllResultsAsync(int examId, int teacherId, int page, int pageSize)
+        public async Task<List<ResultDTO>> GetExamAllResultsAsync(int examId, int teacherId)
         {
             try
             {
@@ -122,13 +118,10 @@ namespace QuizPortalAPI.Services
 
                 var results = await _resultRepository.GetAllResultsForAnExamByTeacherIdAsync(examId);
 
-                var skip = (page - 1) * pageSize;
-                var pagedResult = results.Skip(skip).Take(pageSize).ToList();
-
-                _logger.LogInformation($"Teacher {teacherId} retrieved results for exam {examId} (page {page})");
+                _logger.LogInformation($"Teacher {teacherId} retrieved results for exam {examId}");
                 
                 var resultDTOs = new List<ResultDTO>();
-                foreach (var r in pagedResult)
+                foreach (var r in results)
                 {
                     resultDTOs.Add(await MapToResultDTOAsync(r));
                 }

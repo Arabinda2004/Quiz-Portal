@@ -16,7 +16,7 @@ namespace QuizPortalAPI.Services
         Task<bool> WithdrawResponseAsync(int responseId, int studentId);
 
         // Teacher/Admin operations for viewing responses
-        Task<StudentAttemptsResponseDTO> GetAllStudentAttemptsAsync(int examId, int page, int pageSize);
+        Task<StudentAttemptsResponseDTO> GetAllStudentAttemptsAsync(int examId);
 
         Task<ExamStatisticsDTO> GetExamStatisticsAsync(int examId);
 

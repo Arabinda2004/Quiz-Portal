@@ -35,7 +35,7 @@ namespace QuizPortalAPI.Controllers
         /// GET /api/teacher/exams/{examId}/responses/students
         /// </summary>
         [HttpGet("students")]
-        public async Task<IActionResult> GetStudentAttempts(int examId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetStudentAttempts(int examId)
         {
             try
             {
@@ -52,7 +52,7 @@ namespace QuizPortalAPI.Controllers
                 if (exam == null)
                     return NotFound(new { message = "Exam not found" });
 
-                var attempts = await _responseService.GetAllStudentAttemptsAsync(examId, page, pageSize);
+                var attempts = await _responseService.GetAllStudentAttemptsAsync(examId);
 
                 _logger.LogInformation($"Teacher {teacherId} retrieved student attempts for exam {examId}");
                 return Ok(new
@@ -60,9 +60,6 @@ namespace QuizPortalAPI.Controllers
                     examId = examId,
                     examName = exam.Title,
                     totalStudentsAttempted = attempts.TotalCount,
-                    page = page,
-                    pageSize = pageSize,
-                    totalPages = (int)Math.Ceiling((double)attempts.TotalCount / pageSize),
                     data = attempts.Students
                 });
             }

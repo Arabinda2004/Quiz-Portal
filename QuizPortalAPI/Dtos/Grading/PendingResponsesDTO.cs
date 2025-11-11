@@ -6,9 +6,6 @@ namespace QuizPortalAPI.DTOs.Grading
         public string ExamName { get; set; } = string.Empty;
         public int TotalPending { get; set; }
         public int TotalResponses { get; set; }
-        public int Page { get; set; }
-        public int PageSize { get; set; }
-        public int TotalPages { get; set; }
         public List<PendingResponseItemDTO> Responses { get; set; } = new();
     }
 

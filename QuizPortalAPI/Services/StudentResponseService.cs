@@ -345,7 +345,7 @@ namespace QuizPortalAPI.Services
         /// <summary>
         /// Get all students who attempted an exam with their submission details
         /// </summary>
-        public async Task<StudentAttemptsResponseDTO> GetAllStudentAttemptsAsync(int examId, int page, int pageSize)
+        public async Task<StudentAttemptsResponseDTO> GetAllStudentAttemptsAsync(int examId)
         {
             try
             {
@@ -359,8 +359,6 @@ namespace QuizPortalAPI.Services
                 
                 var studentAttempts = responsesGrouped
                     .Select(g => new { StudentId = g.Key, ResponseCount = g.Value.Count })
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
                     .ToList();
 
                 var totalCount = responsesGrouped.Count; // count of total unique students

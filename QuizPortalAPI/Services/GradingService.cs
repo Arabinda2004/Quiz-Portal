@@ -42,7 +42,7 @@ namespace QuizPortalAPI.Services
         /// <summary>
         /// Get all pending responses for an exam
         /// </summary>
-        public async Task<PendingResponsesDTO> GetPendingResponsesAsync(int examId, int teacherId, int page = 1, int pageSize = 10)
+        public async Task<PendingResponsesDTO> GetPendingResponsesAsync(int examId, int teacherId)
         {
             try
             {
@@ -64,10 +64,6 @@ namespace QuizPortalAPI.Services
                 var pendingResponses = allResponses.Where(sr => !gradingRecords.ContainsKey(sr.ResponseID)).ToList();
 
                 var totalPending = pendingResponses.Count;
-                var paginatedResponses = allResponses
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToList();
 
                 var uniqueStudents = allResponses.Select(sr => sr.StudentID).Distinct().Count();
 
@@ -77,10 +73,7 @@ namespace QuizPortalAPI.Services
                     ExamName = exam.Title,
                     TotalPending = totalPending,
                     TotalResponses = uniqueStudents,
-                    Page = page,
-                    PageSize = pageSize,
-                    TotalPages = (int)Math.Ceiling((double)allResponses.Count / pageSize),
-                    Responses = paginatedResponses.Select(sr =>
+                    Responses = allResponses.Select(sr =>
                     {
                         var isGraded = gradingRecords.ContainsKey(sr.ResponseID);
                         var marksObtained = isGraded ? gradingRecords[sr.ResponseID].MarksObtained : 0;
@@ -128,7 +121,7 @@ namespace QuizPortalAPI.Services
         /// <summary>
         /// Get pending responses for a specific student
         /// </summary>
-        public async Task<PendingResponsesDTO> GetPendingResponsesByStudentAsync(int examId, int studentId, int teacherId, int page = 1, int pageSize = 10)
+        public async Task<PendingResponsesDTO> GetPendingResponsesByStudentAsync(int examId, int studentId, int teacherId)
         {
             try
             {
@@ -152,10 +145,6 @@ namespace QuizPortalAPI.Services
                 var allResponses = await _studentResponseRepository.GetAllStudentResponsesAsync(examId, studentId);
 
                 var totalPending = pendingResponses.Count;
-                var paginatedResponses = pendingResponses
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToList();
 
                 var result = new PendingResponsesDTO
                 {
@@ -163,10 +152,7 @@ namespace QuizPortalAPI.Services
                     ExamName = exam.Title,
                     TotalPending = totalPending,
                     TotalResponses = allResponses.Count,
-                    Page = page,
-                    PageSize = pageSize,
-                    TotalPages = (int)Math.Ceiling((double)totalPending / pageSize),
-                    Responses = paginatedResponses.Select(sr => new PendingResponseItemDTO
+                    Responses = pendingResponses.Select(sr => new PendingResponseItemDTO
                     {
                         ResponseId = sr.ResponseID,
                         QuestionId = sr.QuestionID,

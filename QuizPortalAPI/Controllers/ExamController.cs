@@ -4,7 +4,6 @@ using QuizPortalAPI.DTOs.Exam;
 using QuizPortalAPI.Services;
 using QuizPortalAPI.DAL.ResultRepo;
 using System.Security.Claims;
-    
 
 namespace QuizPortalAPI.Controllers
 {

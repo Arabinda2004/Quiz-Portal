@@ -231,11 +231,9 @@ export const teacherService = {
   // },
 
   // Grading Methods (for grading pending responses)
-  getPendingResponses: async (examId, page = 1, pageSize = 10) => {
+  getPendingResponses: async (examId) => {
     try {
-      const response = await api.get(`/teacher/grading/exams/${examId}/pending`, {
-        params: { page, pageSize },
-      })
+      const response = await api.get(`/teacher/grading/exams/${examId}/pending`)
       console.log("+++++++++++")
       console.log(response.data)
       return response.data
@@ -244,11 +242,9 @@ export const teacherService = {
     }
   },
 
-  getPendingResponsesByQuestion: async (examId, questionId, page = 1, pageSize = 10) => {
+  getPendingResponsesByQuestion: async (examId, questionId) => {
     try {
-      const response = await api.get(`/teacher/grading/exams/${examId}/questions/${questionId}/pending`, {
-        params: { page, pageSize },
-      })
+      const response = await api.get(`/teacher/grading/exams/${examId}/questions/${questionId}/pending`)
       return response.data
     } catch (error) {
       throw error.response?.data || error.message
@@ -256,11 +252,9 @@ export const teacherService = {
   },
 
   // Get pending responses for a specific student that need grading
-  getPendingResponsesByStudent: async (examId, studentId, page = 1, pageSize = 10) => {
+  getPendingResponsesByStudent: async (examId, studentId) => {
     try {
-      const response = await api.get(`/teacher/grading/exams/${examId}/students/${studentId}/pending`, {
-        params: { page, pageSize },
-      })
+      const response = await api.get(`/teacher/grading/exams/${examId}/students/${studentId}/pending`)
       return response.data
     } catch (error) {
       throw error.response?.data || error.message
@@ -568,11 +562,9 @@ export const resultService = {
   },
 
   // Get all results for an exam
-  getExamResults: async (examId, page = 1, pageSize = 10) => {
+  getExamResults: async (examId) => {
     try {
-      const response = await api.get(`/results/exams/${examId}/all-results`, {
-        params: { page, pageSize },
-      })
+      const response = await api.get(`/results/exams/${examId}/all-results`)
       console.log("Exam result: ")
       console.log(response.data)
       console.log("All Results Response:", response.data)
@@ -683,11 +675,9 @@ export const resultService = {
   //   }
   // },
 
-  getMyCompletedExams: async (page = 1, pageSize = 100) => {
+  getMyCompletedExams: async () => {
     try {
-      const response = await api.get(`/results/my-completed-exams`, {
-        params: { page, pageSize },
-      })
+      const response = await api.get(`/results/my-completed-exams`)
       return response.data.data || []
     } catch (error) {
       throw error.response?.data || error.message

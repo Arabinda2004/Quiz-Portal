@@ -21,7 +21,7 @@ namespace QuizPortalAPI.Services
             try
             {
                 var users = await _userRepository.GetAllUsersAsync();
-                return users.Select(MapToResponseDTO).ToList(); // Select() is a LINQ projection method
+                return users.Select(MapToResponseDTO).ToList();
             }
             catch (Exception ex)
             {
@@ -112,15 +112,6 @@ namespace QuizPortalAPI.Services
 
                 if (!string.IsNullOrEmpty(updateUserDTO.FullName))
                     user.FullName = updateUserDTO.FullName;
-
-                // // Handle role update (only for admins)
-                // if (!string.IsNullOrEmpty(updateUserDTO.Role))
-                // {
-                //     if (!Enum.TryParse<UserRole>(updateUserDTO.Role, true, out var role))
-                //         throw new InvalidOperationException($"Invalid role: {updateUserDTO.Role}");
-                //     user.Role = role;
-                // }
-                // my change 
 
                 await _userRepository.UpdateAsync(user);
 

@@ -11,7 +11,6 @@ import {
   LoadingSpinner,
   Alert,
   SearchBar,
-  Pagination,
 } from '../../styles/AdminStyles'
 
 export default function UserManagement() {
@@ -23,8 +22,6 @@ export default function UserManagement() {
   const [success, setSuccess] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState('All')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(10)
 
   useEffect(() => {
     loadUsers()
@@ -53,12 +50,6 @@ export default function UserManagement() {
     const matchesRole = filterRole === 'All' || userItem.role === filterRole
     return matchesSearch && matchesRole
   })
-
-  // Paginate
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedUsers = filteredUsers.slice(startIndex, endIndex)
 
   if (loading) {
     return (
@@ -97,17 +88,11 @@ export default function UserManagement() {
             type="text"
             placeholder="Search by name or email..."
             value={searchTerm}
-            onChange={e => {
-              setSearchTerm(e.target.value)
-              setCurrentPage(1)
-            }}
+            onChange={e => setSearchTerm(e.target.value)}
           />
           <select
             value={filterRole}
-            onChange={e => {
-              setFilterRole(e.target.value)
-              setCurrentPage(1)
-            }}
+            onChange={e => setFilterRole(e.target.value)}
             style={{ padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db' }}
           >
             <option value="All">All Roles</option>
@@ -117,61 +102,36 @@ export default function UserManagement() {
           </select>
         </SearchBar>
 
-        {paginatedUsers.length === 0 ? (
+        {filteredUsers.length === 0 ? (
           <EmptyState>
             <h3>No users found</h3>
             <p>{searchTerm || filterRole !== 'All' ? 'Try adjusting your filters' : 'No users available'}</p>
           </EmptyState>
         ) : (
-          <>
-            <DataTable>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Created</th>
+          <DataTable>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredUsers.map(userItem => (
+                <tr key={userItem.userID}>
+                  <td>
+                    <strong>{userItem.fullName}</strong>
+                  </td>
+                  <td>{userItem.email}</td>
+                  <td>
+                    <StatusBadge status={userItem.role}>{userItem.role}</StatusBadge>
+                  </td>
+                  <td>{new Date(userItem.createdAt).toLocaleDateString()}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {paginatedUsers.map(userItem => (
-                  <tr key={userItem.userID}>
-                    <td>
-                      <strong>{userItem.fullName}</strong>
-                    </td>
-                    <td>{userItem.email}</td>
-                    <td>
-                      <StatusBadge status={userItem.role}>{userItem.role}</StatusBadge>
-                    </td>
-                    <td>{new Date(userItem.createdAt).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </DataTable>
-
-            {totalPages > 1 && (
-              <Pagination>
-                <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
-                  First
-                </button>
-                <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>
-                  Previous
-                </button>
-                <span>
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </button>
-                <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>
-                  Last
-                </button>
-              </Pagination>
-            )}
-          </>
+              ))}
+            </tbody>
+          </DataTable>
         )}
       </Card>
     </>

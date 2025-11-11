@@ -6,9 +6,9 @@ namespace QuizPortalAPI.Services
     {
         
         /// <summary>
-        /// Get all exam results for a student (paginated)
+        /// Get all exam results for a student
         /// </summary>
-        Task<List<ResultDTO>> GetStudentResultsAsync(int studentId, int page, int pageSize);
+        Task<List<ResultDTO>> GetStudentResultsAsync(int studentId);
 
         /// <summary>
         /// Get a specific exam result for a student
@@ -22,9 +22,9 @@ namespace QuizPortalAPI.Services
 
 
         /// <summary>
-        /// Get all results for an exam (paginated)
+        /// Get all results for an exam
         /// </summary>
-        Task<List<ResultDTO>> GetExamAllResultsAsync(int examId, int teacherId, int page, int pageSize);
+        Task<List<ResultDTO>> GetExamAllResultsAsync(int examId, int teacherId);
 
         
         /// <summary>

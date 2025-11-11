@@ -33,13 +33,13 @@ namespace QuizPortalAPI.Controllers
         /// GET /api/teacher/grading/exams/{examId}/pending
         /// </summary>
         [HttpGet("exams/{examId}/pending")]
-        public async Task<IActionResult> GetPendingResponses(int examId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetPendingResponses(int examId)
         {
             try
             {
                 var teacherId = GetLoggedInUserId()!;
 
-                var pendingResponses = await _gradingService.GetPendingResponsesAsync(examId, teacherId.Value, page, pageSize);
+                var pendingResponses = await _gradingService.GetPendingResponsesAsync(examId, teacherId.Value);
 
                 _logger.LogInformation($"Teacher {teacherId} retrieved pending responses for exam {examId}");
                 return Ok(new
@@ -73,13 +73,13 @@ namespace QuizPortalAPI.Controllers
         /// GET /api/teacher/grading/exams/{examId}/students/{studentId}/pending
         /// </summary>
         [HttpGet("exams/{examId}/students/{studentId}/pending")]
-        public async Task<IActionResult> GetPendingResponsesByStudent(int examId, int studentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetPendingResponsesByStudent(int examId, int studentId)
         {
             try
             {
                 var teacherId = GetLoggedInUserId()!;
 
-                var pendingResponses = await _gradingService.GetPendingResponsesByStudentAsync(examId, studentId, teacherId.Value, page, pageSize);
+                var pendingResponses = await _gradingService.GetPendingResponsesByStudentAsync(examId, studentId, teacherId.Value);
 
                 _logger.LogInformation($"Teacher {teacherId} retrieved pending responses for student {studentId}");
                 return Ok(new
