@@ -104,7 +104,6 @@ public class ResultRepository : IResultRepository
                     .Where(r => r.StudentID == studentId && r.IsPublished)
                     .Include(r => r.Exam)
                     .Include(r => r.Student)
-                    // .Include(r => r.TotalMarks)
                     .Include(r => r.EvaluatorUser)
                     .OrderByDescending(r => r.PublishedAt)
                     .ToListAsync();

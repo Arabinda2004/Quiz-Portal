@@ -117,9 +117,9 @@ namespace QuizPortalAPI.Controllers
         }
         /// <summary>
         /// Get all exams
-        /// GET /api/exams/all
+        /// GET /api/admin/exams/all
         /// </summary>
-        [HttpGet("all")]
+        [HttpGet("exams/all")]
         public async Task<IActionResult> GetAllExams()
         {
             try

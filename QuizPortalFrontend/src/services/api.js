@@ -428,7 +428,7 @@ export const adminService = {
   // Get all exams
   getAllExams: async () => {
     try {
-      const response = await api.get('/exams/all')
+      const response = await api.get('/admin/exams/all')
       console.log("Getting all exams..")
       console.log(response.data)
       return response.data

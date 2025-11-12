@@ -205,7 +205,7 @@ namespace QuizPortalAPI.Services
                         $"Requested start: {finalScheduleStart:yyyy-MM-dd HH:mm} UTC");
                 }
 
-                // 3. Add reasonable buffer - exam must be scheduled at least 15 minutes in advance (recheck)
+                // 3. Add reasonable buffer
                 var minimumStartTime = DateTime.UtcNow.AddMinutes(15);
                 if (finalScheduleStart < minimumStartTime)
                 {
@@ -563,7 +563,6 @@ namespace QuizPortalAPI.Services
                 PassingMarks = exam.PassingMarks,  // Computed property
                 AccessCode = exam.AccessCode,
                 CreatedAt = exam.CreatedAt,
-                // UpdatedAt = exam.UpdatedAt,
                 IsActive = isActive,
                 TimeUntilStart = exam.ScheduleStart > now ? exam.ScheduleStart - now : null,
                 TimeRemaining = isActive ? exam.ScheduleEnd - now : null

@@ -2,193 +2,61 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { teacherService } from '../../services/api'
+import TeacherLayout from '../../components/TeacherLayout'
 import styled from 'styled-components'
-
-const Container = styled.div`
-  min-height: 100vh;
-  background-color: #f3f4f6;
-`
-
-const NavBar = styled.nav`
-  background-color: #1f2937;
-  color: white;
-  padding: 1rem 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-`
-
-const NavLeft = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-`
-
-const Logo = styled.div`
-  font-size: 1.5rem;
-  font-weight: bold;
-  cursor: pointer;
-`
-
-const NavMenu = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-`
-
-const LogoutButton = styled.button`
-  padding: 0.5rem 1rem;
-  background-color: #dc2626;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.875rem;
-
-  &:hover {
-    background-color: #b91c1c;
-  }
-`
-
-const MainContent = styled.div`
-  padding: 2rem;
-  max-width: 900px;
-  margin: 0 auto;
-`
-
-const BackButton = styled.button`
-  background: none;
-  border: none;
-  color: #3b82f6;
-  cursor: pointer;
-  font-size: 0.95rem;
-  margin-bottom: 1rem;
-  padding: 0;
-
-  &:hover {
-    text-decoration: underline;
-  }
-`
-
-const FormContainer = styled.div`
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 2rem;
-`
-
-const PageTitle = styled.h1`
-  margin: 0 0 2rem 0;
-  font-size: 2rem;
-  color: #1f2937;
-`
-
-const FormGroup = styled.div`
-  margin-bottom: 1.5rem;
-`
-
-const Label = styled.label`
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #374151;
-  font-weight: 600;
-  font-size: 0.95rem;
-`
-
-const Input = styled.input`
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 1rem;
-  font-family: inherit;
-
-  &:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-
-  &:invalid {
-    border-color: #ef4444;
-  }
-
-  &:disabled {
-    background-color: #f3f4f6;
-    color: #9ca3af;
-    cursor: not-allowed;
-  }
-`
-
-const TextArea = styled.textarea`
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 1rem;
-  font-family: inherit;
-  resize: vertical;
-  min-height: 100px;
-
-  &:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-
-  &:disabled {
-    background-color: #f3f4f6;
-    color: #9ca3af;
-    cursor: not-allowed;
-  }
-`
-
-const Select = styled.select`
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 1rem;
-  font-family: inherit;
-  background-color: white;
-
-  &:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-
-  &:disabled {
-    background-color: #f3f4f6;
-    color: #9ca3af;
-    cursor: not-allowed;
-  }
-`
+import {
+  FormContainer,
+  FormSection,
+  FormSectionTitle,
+  FormGroup,
+  Label,
+  Input,
+  TextArea,
+  Select,
+  ButtonGroup,
+  PrimaryButton,
+  SecondaryButton,
+  FormError,
+  FormSuccess,
+  Alert,
+  COLORS,
+} from '../../styles/TeacherStyles'
 
 const OptionsContainer = styled.div`
-  background-color: #f9fafb;
-  padding: 1.5rem;
-  border-radius: 4px;
-  margin-top: 1rem;
+  background-color: rgba(30, 64, 175, 0.03);
+  padding: 20px;
+  border-radius: 12px;
+  margin-top: 16px;
+  border: 2px dashed ${COLORS.border};
 `
 
 const OptionItem = styled.div`
   display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: 12px;
+  margin-bottom: 12px;
   align-items: flex-start;
-  padding: 1rem;
+  padding: 16px;
   background: white;
-  border-radius: 4px;
-  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  border: 1px solid ${COLORS.border};
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: ${COLORS.primary};
+    box-shadow: 0 2px 8px rgba(30, 64, 175, 0.1);
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
 `
 
-const CheckboxInput = styled.input`
-  margin-top: 0.5rem;
+const RadioInput = styled.input`
+  margin-top: 4px;
   cursor: pointer;
   width: 18px;
   height: 18px;
+  accent-color: ${COLORS.success};
 
   &:disabled {
     cursor: not-allowed;
@@ -198,122 +66,102 @@ const CheckboxInput = styled.input`
 
 const OptionInput = styled(Input)`
   margin: 0;
+  flex: 1;
 `
 
-const OptionControls = styled.div`
-  display: flex;
-  gap: 0.5rem;
-`
-
-const SmallButton = styled.button`
-  padding: 0.5rem 0.75rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.875rem;
+const OptionLabel = styled.div`
+  font-size: 12px;
   font-weight: 600;
-`
-
-const RemoveButton = styled(SmallButton)`
-  background-color: #ef4444;
-  color: white;
-
-  &:hover {
-    background-color: #dc2626;
-  }
-`
-
-const AddButton = styled(SmallButton)`
-  background-color: #10b981;
-  color: white;
-
-  &:hover {
-    background-color: #059669;
-  }
-`
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  margin-top: 2rem;
-`
-
-const Button = styled.button`
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`
-
-const SubmitButton = styled(Button)`
-  background-color: #3b82f6;
-  color: white;
-
-  &:hover:not(:disabled) {
-    background-color: #2563eb;
-  }
-`
-
-const CancelButton = styled(Button)`
-  background-color: #e5e7eb;
-  color: #1f2937;
-
-  &:hover {
-    background-color: #d1d5db;
-  }
-`
-
-const ErrorMessage = styled.div`
-  background-color: #fee;
-  border-left: 4px solid #991b1b;
-  color: #991b1b;
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 1.5rem;
-`
-
-const SuccessMessage = styled.div`
-  background-color: #ecfdf5;
-  border-left: 4px solid #065f46;
-  color: #065f46;
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 1.5rem;
-`
-
-const WarningMessage = styled.div`
-  background-color: #fef3c7;
-  border-left: 4px solid #92400e;
-  color: #92400e;
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 1.5rem;
-  font-weight: 500;
-`
-
-const RestrictedMessage = styled.div`
-  background-color: #fee;
-  border-left: 4px solid #991b1b;
-  color: #991b1b;
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 1.5rem;
-  font-weight: 600;
+  color: ${COLORS.textMuted};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
 `
 
 const Helper = styled.p`
-  color: #6b7280;
-  font-size: 0.875rem;
-  margin-top: 0.25rem;
+  color: ${COLORS.textSecondary};
+  font-size: 13px;
+  margin-top: 6px;
+`
+
+const QuestionTypeCard = styled.div`
+  padding: 16px;
+  border: 2px solid ${(props) => (props.$selected ? COLORS.primary : COLORS.border)};
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  background-color: ${(props) => (props.$selected ? 'rgba(30, 64, 175, 0.05)' : 'white')};
+
+  &:hover {
+    border-color: ${COLORS.primary};
+    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.1);
+  }
+
+  .icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: ${COLORS.text};
+    margin: 0 0 4px 0;
+  }
+
+  p {
+    font-size: 12px;
+    color: ${COLORS.textSecondary};
+    margin: 0;
+  }
+`
+
+const QuestionTypeGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`
+
+const MarksPreview = styled.div`
+  background-color: rgba(16, 185, 129, 0.05);
+  border-left: 4px solid ${COLORS.success};
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: ${COLORS.text};
+  margin-top: 12px;
+
+  strong {
+    color: ${COLORS.success};
+  }
+`
+
+const LoadingSpinner = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid ${COLORS.border};
+    border-top-color: ${COLORS.primary};
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
 `
 
 export default function QuestionForm() {
@@ -491,17 +339,8 @@ export default function QuestionForm() {
     setFormData((prev) => ({ ...prev, options: newOptions }))
   }
 
-  const handleRemoveOption = (index) => {
-    // MCQ must have exactly 4 options, prevent removing options for MCQ
-    if (formData.questionType === 'MCQ' && formData.options.length <= 4) {
-      setError('MCQ questions must have exactly 4 options')
-      return
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      options: prev.options.filter((_, i) => i !== index),
-    }))
+  const handleCancel = () => {
+    navigate(`/teacher/exam/${examId}`)
   }
 
   const handleSubmit = async (e) => {
@@ -569,13 +408,8 @@ export default function QuestionForm() {
     }
   }
 
-  const handleCancel = () => {
-    navigate(`/teacher/exam/${examId}`)
-  }
-
   const handleLogout = async () => {
     try {
-      logout()
       navigate('/login')
     } catch (err) {
       console.error('Logout failed:', err)
@@ -584,96 +418,135 @@ export default function QuestionForm() {
 
   if (loading) {
     return (
-      <Container>
-        <NavBar>
-          <NavLeft>
-            <Logo>Quiz Portal</Logo>
-          </NavLeft>
-        </NavBar>
-        <MainContent>
-          <FormContainer>Loading...</FormContainer>
-        </MainContent>
-      </Container>
+      <TeacherLayout pageTitle={isEditMode ? 'Edit Question' : 'Add Question'}>
+        <FormContainer>
+          <LoadingSpinner>
+            <div className="spinner" />
+          </LoadingSpinner>
+        </FormContainer>
+      </TeacherLayout>
     )
   }
 
   return (
-    <Container>
-      <NavBar>
-        <NavLeft>
-          <Logo onClick={() => navigate('/teacher/dashboard')}>Quiz Portal</Logo>
-        </NavLeft>
-        <NavMenu>
-          <span>{user?.fullName} ({user?.role})</span>
-          <LogoutButton onClick={handleLogout}>Logout</LogoutButton>
-        </NavMenu>
-      </NavBar>
+    <TeacherLayout pageTitle={isEditMode ? 'Edit Question' : 'Add Question'}>
+      <FormContainer maxWidth="900px">
+        {/* Exam Status Alert */}
+        {exam && examStatus && (
+          <>
+            {examStatus === 'Active' && (
+              <Alert type="error">
+                <span>✕</span>
+                <div className="content">
+                  <p>
+                    <strong>This exam is ACTIVE.</strong> Questions cannot be modified while the exam is in progress. Students are currently taking the exam.
+                  </p>
+                </div>
+              </Alert>
+            )}
+            {examStatus === 'Ended' && (
+              <Alert type="error">
+                <span>✕</span>
+                <div className="content">
+                  <p>
+                    <strong>This exam has ENDED.</strong> Questions cannot be modified after the exam has concluded.
+                  </p>
+                </div>
+              </Alert>
+            )}
+            {examStatus === 'Upcoming' && isEditMode && (
+              <Alert type="warning">
+                <span>✓</span>
+                <div className="content">
+                  <p>This exam is upcoming. You can modify this question before the exam starts.</p>
+                </div>
+              </Alert>
+            )}
+          </>
+        )}
 
-      <MainContent>
-        <BackButton onClick={handleCancel}>← Back to Exam</BackButton>
+        {error && (
+          <FormError>
+            <span>⚠</span>
+            <span>{error}</span>
+          </FormError>
+        )}
+        {success && (
+          <FormSuccess>
+            <span>✓</span>
+            <span>{success}</span>
+          </FormSuccess>
+        )}
 
-        <FormContainer>
-          <PageTitle>{isEditMode ? 'Edit Question' : 'Add New Question'}</PageTitle>
+        <form onSubmit={handleSubmit} disabled={examStatus !== 'Upcoming'}>
+          {/* Section 1: Question */}
+          <FormSection>
+            <FormSectionTitle>
+              Question Details
+            </FormSectionTitle>
 
-          {error && <ErrorMessage>{error}</ErrorMessage>}
-          {success && <SuccessMessage>{success}</SuccessMessage>}
-
-          {/* Exam Status Warning */}
-          {exam && examStatus && (
-            <>
-              {examStatus === 'Active' && (
-                <RestrictedMessage>
-                  ⛔ This exam is currently ACTIVE. Questions cannot be modified while the exam is in progress.
-                </RestrictedMessage>
-              )}
-              {examStatus === 'Ended' && (
-                <RestrictedMessage>
-                  ⛔ This exam has ENDED. Questions cannot be modified after the exam has ended.
-                </RestrictedMessage>
-              )}
-              {examStatus === 'Upcoming' && isEditMode && (
-                <WarningMessage>
-                  ✓ This exam is upcoming. You can modify this question before the exam starts.
-                </WarningMessage>
-              )}
-            </>
-          )}
-
-          <form onSubmit={handleSubmit} disabled={examStatus !== 'Upcoming'}>
-            {/* Question Text */}
             <FormGroup>
-              <Label htmlFor="questionText">Question *</Label>
+              <Label htmlFor="questionText">
+                Question <span style={{ color: COLORS.danger }}>*</span>
+              </Label>
               <TextArea
                 id="questionText"
                 name="questionText"
                 value={formData.questionText}
                 onChange={handleInputChange}
-                placeholder="Enter the question text..."
+                placeholder="Enter the question text. Be clear and concise..."
                 disabled={examStatus !== 'Upcoming'}
+                $error={!!validationErrors.questionText}
               />
               {validationErrors.questionText && (
-                <Helper style={{ color: '#ef4444' }}>{validationErrors.questionText}</Helper>
+                <FormError>{validationErrors.questionText}</FormError>
               )}
             </FormGroup>
+          </FormSection>
 
-            {/* Question Type */}
+          {/* Section 2: Question Type & Marks */}
+          <FormSection>
+            <FormSectionTitle>
+              Question Type & Scoring
+            </FormSectionTitle>
+
             <FormGroup>
-              <Label htmlFor="questionType">Question Type *</Label>
-              <Select
-                value={formData.questionType}
-                onChange={handleQuestionTypeChange}
-                disabled={examStatus !== 'Upcoming'}
-              >
-                <option value="MCQ">Multiple Choice (MCQ)</option>
-                <option value="ShortAnswer">Short Answer</option>
-                <option value="LongAnswer">Long Answer</option>
-              </Select>
-              <Helper>Choose the type of question</Helper>
+              <Label>Question Type *</Label>
+              <QuestionTypeGrid>
+                <QuestionTypeCard
+                  $selected={formData.questionType === 'MCQ'}
+                  onClick={() => !disableChanges && handleQuestionTypeChange({ target: { value: 'MCQ' } })}
+                  style={{ opacity: examStatus !== 'Upcoming' ? 0.5 : 1, cursor: examStatus !== 'Upcoming' ? 'not-allowed' : 'pointer' }}
+                >
+                  <div className="icon">✓</div>
+                  <h4>Multiple Choice</h4>
+                  <p>Select correct option</p>
+                </QuestionTypeCard>
+                <QuestionTypeCard
+                  $selected={formData.questionType === 'ShortAnswer'}
+                  onClick={() => !disableChanges && handleQuestionTypeChange({ target: { value: 'ShortAnswer' } })}
+                  style={{ opacity: examStatus !== 'Upcoming' ? 0.5 : 1, cursor: examStatus !== 'Upcoming' ? 'not-allowed' : 'pointer' }}
+                >
+                  <div className="icon">T</div>
+                  <h4>Short Answer</h4>
+                  <p>Student provides answer</p>
+                </QuestionTypeCard>
+                <QuestionTypeCard
+                  $selected={formData.questionType === 'LongAnswer'}
+                  onClick={() => !disableChanges && handleQuestionTypeChange({ target: { value: 'LongAnswer' } })}
+                  style={{ opacity: examStatus !== 'Upcoming' ? 0.5 : 1, cursor: examStatus !== 'Upcoming' ? 'not-allowed' : 'pointer' }}
+                >
+                  <div className="icon">¶</div>
+                  <h4>Long Answer</h4>
+                  <p>Detailed answer required</p>
+                </QuestionTypeCard>
+              </QuestionTypeGrid>
             </FormGroup>
 
-            {/* Marks */}
             <FormGroup>
-              <Label htmlFor="marks">Marks *</Label>
+              <Label htmlFor="marks">
+                Marks <span style={{ color: COLORS.danger }}>*</span>
+              </Label>
               <Input
                 id="marks"
                 type="number"
@@ -683,95 +556,96 @@ export default function QuestionForm() {
                 min="1"
                 step="1"
                 disabled={examStatus !== 'Upcoming'}
-                style={{ appearance: 'textfield' }}
+                $error={!!validationErrors.marks}
               />
-              {validationErrors.marks && (
-                <Helper style={{ color: '#ef4444' }}>{validationErrors.marks}</Helper>
-              )}
+              {validationErrors.marks && <FormError>{validationErrors.marks}</FormError>}
               {exam && !validationErrors.marks && (
-                <Helper style={{ color: '#059669' }}>
-                  ℹ️ Exam total marks: {exam.totalMarks} | Other questions: {allQuestions
-                    .filter(q => isEditMode ? parseInt(q.questionID) !== parseInt(questionId) : true)
-                    .reduce((sum, q) => sum + (parseFloat(q.marks) || 0), 0).toFixed(2)} | This question: {formData.marks} | Total after save: {(allQuestions
-                      .filter(q => isEditMode ? parseInt(q.questionID) !== parseInt(questionId) : true)
-                      .reduce((sum, q) => sum + (parseFloat(q.marks) || 0), 0) + parseFloat(formData.marks || 0)).toFixed(2)}
-                </Helper>
+                <MarksPreview>
+                  <strong>Current Question Marks:</strong> {formData.marks} | <strong>Other Questions:</strong> {allQuestions
+                    .filter((q) => !isEditMode || parseInt(q.questionID) !== parseInt(questionId))
+                    .reduce((sum, q) => sum + (parseFloat(q.marks) || 0), 0)
+                    .toFixed(2)} | <strong>Total if saved:</strong> {(allQuestions
+                      .filter((q) => !isEditMode || parseInt(q.questionID) !== parseInt(questionId))
+                      .reduce((sum, q) => sum + (parseFloat(q.marks) || 0), 0) + parseFloat(formData.marks || 0))
+                      .toFixed(2)}
+                </MarksPreview>
               )}
             </FormGroup>
+          </FormSection>
 
-            {/* Options for MCQ */}
-            {formData.questionType === 'MCQ' && (
-              <FormGroup>
-                <Label>Options (exactly 4 required) *</Label>
-                <OptionsContainer>
-                  {formData.options.map((option, index) => (
-                    <OptionItem key={index}>
-                      <CheckboxInput
-                        type="radio"
-                        name="correctOption"
-                        checked={option.isCorrect}
-                        onChange={(e) => handleOptionChange(index, 'isCorrect', e.target.checked)}
-                        title="Mark as correct answer (only one option can be correct)"
+          {/* Section 3: MCQ Options */}
+          {formData.questionType === 'MCQ' && (
+            <FormSection>
+              <FormSectionTitle>
+                Options (Exactly 4 required)
+              </FormSectionTitle>
+              <Helper>Select the correct answer using the radio button. Students will see all 4 options in random order.</Helper>
+
+              <OptionsContainer>
+                {formData.options.map((option, index) => (
+                  <OptionItem key={index}>
+                    <RadioInput
+                      type="radio"
+                      name="correctOption"
+                      checked={option.isCorrect}
+                      onChange={(e) => handleOptionChange(index, 'isCorrect', e.target.checked)}
+                      title="Mark as correct answer"
+                      disabled={examStatus !== 'Upcoming'}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <OptionLabel>Option {String.fromCharCode(65 + index)}</OptionLabel>
+                      <OptionInput
+                        type="text"
+                        value={option.optionText}
+                        onChange={(e) => handleOptionChange(index, 'optionText', e.target.value)}
+                        placeholder={`Enter option ${index + 1}`}
                         disabled={examStatus !== 'Upcoming'}
                       />
-                      <div style={{ flex: 1 }}>
-                        <OptionInput
-                          type="text"
-                          value={option.optionText}
-                          onChange={(e) => handleOptionChange(index, 'optionText', e.target.value)}
-                          placeholder={`Option ${index + 1}`}
-                          disabled={examStatus !== 'Upcoming'}
-                        />
-                      </div>
-                      {/* <OptionControls>
-                        <RemoveButton
-                          type="button"
-                          onClick={() => handleRemoveOption(index)}
-                          disabled={formData.options.length <= 4 || examStatus !== 'Upcoming'}
-                          style={{
-                            opacity: formData.options.length <= 4 || examStatus !== 'Upcoming' ? 0.5 : 1,
-                            cursor: formData.options.length <= 4 || examStatus !== 'Upcoming' ? 'not-allowed' : 'pointer'
-                          }}
-                          title={formData.options.length <= 4 ? 'MCQ must have exactly 4 options' : examStatus !== 'Upcoming' ? 'Cannot modify questions for this exam' : 'Remove option'}
-                        >
-                          Remove
-                        </RemoveButton>
-                      </OptionControls> */}
-                    </OptionItem>
-                  ))}
+                    </div>
+                  </OptionItem>
+                ))}
+              </OptionsContainer>
 
-                </OptionsContainer>
-                {validationErrors.options && (
-                  <Helper style={{ color: '#ef4444' }}>{validationErrors.options}</Helper>
-                )}
-              </FormGroup>
-            )}
+              {validationErrors.options && (
+                <FormError style={{ marginTop: '12px' }}>
+                  <span>⚠️</span>
+                  <span>{validationErrors.options}</span>
+                </FormError>
+              )}
+            </FormSection>
+          )}
 
-            {/* Note for Short/Long Answer - No model answer required */}
-            {(formData.questionType === 'ShortAnswer' || formData.questionType === 'LongAnswer') && (
-              <FormGroup>
-                <Helper style={{ color: '#059669', backgroundColor: '#ecfdf5', padding: '1rem', borderRadius: '4px', marginBottom: '1rem' }}>
-                  ℹ️ Students will provide their answers. You can grade them manually after the exam ends.
-                </Helper>
-              </FormGroup>
-            )}
+          {/* Section: Short/Long Answer Info */}
+          {(formData.questionType === 'ShortAnswer' || formData.questionType === 'LongAnswer') && (
+            <FormSection>
+              <Alert type="info">
+                <span>ℹ️</span>
+                <div className="content">
+                  <p>
+                    Students will provide their own answers for {formData.questionType === 'ShortAnswer' ? 'short answer' : 'long answer'} questions. You can grade them manually after the exam ends.
+                  </p>
+                </div>
+              </Alert>
+            </FormSection>
+          )}
 
-            {/* Buttons */}
-            <ButtonGroup>
-              <CancelButton type="button" onClick={handleCancel}>
-                Cancel
-              </CancelButton>
-              <SubmitButton
-                type="submit"
-                disabled={saving || examStatus !== 'Upcoming'}
-                title={examStatus !== 'Upcoming' ? `Cannot modify questions for ${examStatus} exams` : ''}
-              >
-                {saving ? 'Saving...' : isEditMode ? 'Update Question' : 'Add Question'}
-              </SubmitButton>
-            </ButtonGroup>
-          </form>
-        </FormContainer>
-      </MainContent>
-    </Container>
+          {/* Buttons */}
+          <ButtonGroup>
+            <SecondaryButton type="button" onClick={handleCancel}>
+              ← Back to Exam
+            </SecondaryButton>
+            <PrimaryButton
+              type="submit"
+              disabled={saving || examStatus !== 'Upcoming'}
+              title={examStatus !== 'Upcoming' ? `Cannot modify questions for ${examStatus} exams` : ''}
+            >
+              {saving ? 'Saving...' : isEditMode ? 'Update Question' : 'Add Question'}
+            </PrimaryButton>
+          </ButtonGroup>
+        </form>
+      </FormContainer>
+    </TeacherLayout>
   )
 }
+
+const disableChanges = false

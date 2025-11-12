@@ -11,6 +11,9 @@ import RegisterPage from './pages/RegisterPage'
 
 // Teacher pages
 import TeacherDashboard from './pages/Teacher/Dashboard'
+import MyExams from './pages/Teacher/MyExams'
+import Grading from './pages/Teacher/Grading'
+import Results from './pages/Teacher/Results'
 import ExamForm from './pages/Teacher/ExamForm'
 import ExamDetail from './pages/Teacher/ExamDetail'
 import QuestionForm from './pages/Teacher/QuestionForm'
@@ -53,6 +56,30 @@ function App() {
             element={
               <ProtectedRoute requiredRole="Teacher">
                 <TeacherDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/exams"
+            element={
+              <ProtectedRoute requiredRole="Teacher">
+                <MyExams />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/grading"
+            element={
+              <ProtectedRoute requiredRole="Teacher">
+                <Grading />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/results"
+            element={
+              <ProtectedRoute requiredRole="Teacher">
+                <Results />
               </ProtectedRoute>
             }
           />

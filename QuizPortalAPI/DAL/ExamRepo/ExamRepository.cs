@@ -38,6 +38,7 @@ public class ExamRepository : IExamRepository
         var exams = await _context.Exams
                     .Include(e => e.CreatedByUser)
                     .Include(e => e.Questions)
+                    .OrderByDescending(e => e.CreatedAt)
                     .ToListAsync();
 
         return exams;
